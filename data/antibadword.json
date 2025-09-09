@@ -1,0 +1,20 @@
+{
+  "enabled": false,
+  "action": "delete",
+  "words": [
+    "fuck",
+    "shit",
+    "bitch",
+    "damn",
+    "ass",
+    "hell"
+  ],
+  "120363403134346188@g.us": {
+    "words": [
+      "fool",
+      "isaac"
+    ],
+    "enabled": false,
+    "action": "delete"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "enabled": true,
+  "antieditpm": "same",
+  "antieditgc": "off"
+}

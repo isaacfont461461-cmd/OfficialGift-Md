@@ -1,0 +1,32 @@
+{
+  "users": [],
+  "groups": [],
+  "antilink": {
+    "120363403134346188@g.us": {
+      "enabled": true,
+      "action": "warn"
+    }
+  },
+  "antibadword": {
+    "120363403134346188@g.us": {
+      "enabled": true,
+      "action": "kick"
+    }
+  },
+  "warnings": {
+    "120363403134346188@g.us": {
+      "193183954813118@lid": 0
+    }
+  },
+  "sudo": [],
+  "welcome": {},
+  "goodbye": {
+    "120363403134346188@g.us": {
+      "enabled": true,
+      "message": "bye we miss u",
+      "channelId": "120363161513685998@newsletter"
+    }
+  },
+  "chatbot": {},
+  "autoReaction": false
+}
