@@ -1,4 +1,3 @@
-// commands/updater.js
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
@@ -272,9 +271,7 @@ function copyFolderSync(source, target) {
         // Skip sensitive files - ADD YOUR IMPORTANT FILES HERE
         const preservedFiles = [
             'settings.js', 
-            'config.js', 
-            'data', 
-            '.env', 
+            'data',
             'node_modules',
             '.git',
             'session',
