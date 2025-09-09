@@ -1,0 +1,265 @@
+// commands/antibadword.js
+
+const db = require('../lib/database');
+
+const { requireAdmin } = require('../lib/adminCheck');
+
+module.exports = {
+
+    name: 'antibadword',
+
+    aliases: ['abw', 'badword'],
+
+    category: 'GROUP MENU',
+
+    description: 'Manage antibadword settings',
+
+    usage: 'antibadword on/off/set/kick/warn/delete [options]',
+
+    
+
+    async execute(sock, message, args, context) {
+
+        const { chatId, reply, isGroup } = context;
+
+        
+
+        if (!isGroup) {
+
+            return reply('❌ This command can only be used in groups!');
+
+        }
+
+        
+
+        // Check admin permissions
+
+        //if (!(await requireAdmin(context))) return;
+
+   if (!(await requireAdmin(context, "❌ Only group admins can use this command!"))) return;    
+
+        const action = args[1]?.toLowerCase();
+
+        
+
+        // Get current settings with proper defaults
+
+        const defaultSettings = {
+
+            enabled: false,
+
+            action: 'warn',
+
+            warningLimit: 3,
+
+            warnings: {},
+
+            customMessage: '❌ Bad words are not allowed in this group!',
+
+            badWords: ['fuck', 'shit', 'bitch', 'damn', 'bastard', 'asshole', 'crap', 'hell', 'idiot', 'stupid']
+
+        };
+
+        
+
+        const settings = db.getCommandData('antibadword', chatId, defaultSettings);
+
+        
+
+        // Ensure badWords array exists
+
+        if (!settings.badWords || !Array.isArray(settings.badWords)) {
+
+            settings.badWords = [...defaultSettings.badWords];
+
+        }
+
+        
+
+        switch (action) {
+
+            case 'on':
+
+                settings.enabled = true;
+
+                db.updateCommandData('antibadword', chatId, settings);
+
+                return reply('✅ Antibadword has been enabled!');
+
+                
+
+            case 'off':
+
+                settings.enabled = false;
+
+                db.updateCommandData('antibadword', chatId, settings);
+
+                return reply('❌ Antibadword has been disabled!');
+
+                
+
+            case 'kick':
+
+                settings.action = 'kick';
+
+                settings.enabled = true;
+
+                db.updateCommandData('antibadword', chatId, settings);
+
+                return reply('⚡ Antibadword action set to: Immediate kick');
+
+                
+
+            case 'warn':
+
+                const limit = parseInt(args[2]) || 3;
+
+                settings.action = 'warn';
+
+                settings.warningLimit = limit;
+
+                settings.enabled = true;
+
+                db.updateCommandData('antibadword', chatId, settings);
+
+                return reply(`⚠️ Antibadword action set to: Warn (${limit} warnings before kick)`);
+
+                
+
+            case 'delete':
+
+                settings.action = 'delete';
+
+                settings.enabled = true;
+
+                db.updateCommandData('antibadword', chatId, settings);
+
+                return reply('🗑️ Antibadword action set to: Delete message only');
+
+                
+
+            case 'set':
+
+                const subAction = args[2]?.toLowerCase();
+
+                
+
+                if (subAction === 'message') {
+
+                    const customMessage = args.slice(3).join(' ');
+
+                    if (!customMessage) {
+
+                        return reply('❌ Please provide a custom message!\nExample: antibadword set message Watch your language!');
+
+                    }
+
+                    settings.customMessage = customMessage;
+
+                    db.updateCommandData('antibadword', chatId, settings);
+
+                    return reply('✅ Custom antibadword message updated!');
+
+                }
+
+                
+
+                if (subAction === 'add') {
+
+                    const wordToAdd = args[3]?.toLowerCase();
+
+                    if (!wordToAdd) {
+
+                        return reply('❌ Please provide a word to add!\nExample: antibadword set add badword');
+
+                    }
+
+                    
+
+                    if (!settings.badWords.includes(wordToAdd)) {
+
+                        settings.badWords.push(wordToAdd);
+
+                        db.updateCommandData('antibadword', chatId, settings);
+
+                        return reply(`✅ Added "${wordToAdd}" to bad words list!`);
+
+                    } else {
+
+                        return reply('❌ Word already exists in bad words list!');
+
+                    }
+
+                }
+
+                
+
+                if (subAction === 'remove') {
+
+                    const wordToRemove = args[3]?.toLowerCase();
+
+                    if (!wordToRemove) {
+
+                        return reply('❌ Please provide a word to remove!\nExample: antibadword set remove word');
+
+                    }
+
+                    
+
+                    const index = settings.badWords.indexOf(wordToRemove);
+
+                    if (index > -1) {
+
+                        settings.badWords.splice(index, 1);
+
+                        db.updateCommandData('antibadword', chatId, settings);
+
+                        return reply(`✅ Removed "${wordToRemove}" from bad words list!`);
+
+                    } else {
+
+                        return reply('❌ Word not found in bad words list!');
+
+                    }
+
+                }
+
+                
+
+                return reply('❌ Invalid set option!\nAvailable: set message <text> | set add <word> | set remove <word>');
+
+                
+
+            case 'list':
+
+                const wordsText = settings.badWords && settings.badWords.length > 0 
+
+                    ? settings.badWords.slice(0, 20).join(', ') + (settings.badWords.length > 20 ? '...' : '')
+
+                    : 'No bad words configured';
+
+                return reply(`📝 Bad Words List (${settings.badWords.length} total):\n\n${wordsText}`);
+
+                
+
+            case 'status':
+
+            case 'info':
+
+                const statusText = `
+
+📊 Antibadword Status\nStatus: ${settings.enabled ? '✅ Enabled' : '❌ Disabled'}\n\n🔸 Action: ${settings.action}\n\n🔸 Warning Limit: ${settings.warningLimit || 3}\n\n🔸 Custom Message: ${settings.customMessage}\n\n🔸 Bad Words Count: ${settings.badWords ? settings.badWords.length : 0}`;
+
+                return reply(statusText);
+
+                
+
+            default:
+
+                return reply(`❌ Invalid antibadword command!\n\n📝 Usage:\n\n•antibadword on -Enable antibadword\n•antibadword off - Disable antibadword\n\n•antibadword kick - Immediate kick for bad words\n\n• antibadword warn [limit] - Warn system (default: 3)\n\n• antibadword delete - Only delete messagesbb\n\n• antibadword set message <text> - Custom warning message\n\n• antibadword set add <word> - Add bad word\n\n• antibadword set remove <word> - Remove bad word\n\n• antibadword list - Show bad words list\n\n• antibadword status - Show current settings`);
+
+        }
+
+    }
+
+};
