@@ -1,4 +1,6 @@
+// commands/updater.js
 const axios = require('axios');
+const { getLatestVersion } = require("../data/V");
 const fs = require('fs');
 const path = require('path');
 const AdmZip = require('adm-zip');
@@ -233,18 +235,16 @@ module.exports = [
                 } catch (error) {
                     console.log('Could not fetch detailed changelog:', error.message);
                 }
-
-                // Update available message
-                await context.reply(
-                    `🆕 Update Available!\n\n` +
-                    `Current Version: \`${currentHash ? currentHash.substring(0, 7) : 'Unknown'}\`\n` +
-                    `Latest Version: \`${latestCommitHash.substring(0, 7)}\`\n` +
-                    `Last Commit: ${latestCommitMessage}\n` +
-                    `Date: ${commitDate}\n` +
-                    `Author: ${author}${changelog}\n\n` +
-                    `Use .update to install the latest version.`
-                );
-
+const latestVersion = await getLatestVersion();
+await context.reply(
+    `🆕 Update Available!\n\n` +
+    `Current Version: \`${global.version || 'Unknown'}\`\n` +
+    `Latest Version: \`${latestVersion || 'Unknown'}\`\n` +
+    `Last Commit: ${latestCommitMessage}\n` +
+    `Date: ${commitDate}\n` +
+    `Author: ${author}${changelog}\n\n` +
+    `Use .update to install the latest version.`
+);
             } catch (error) {
                 console.error('Update check error:', error);
                 await context.reply(
