@@ -1,6 +1,9 @@
 // commands/updater.js
 const axios = require('axios');
-const { getLatestVersion } = require("../data/V");
+const { version } = require("../data/V.js"); 
+const { getLatestVersion } = require("../lib/getLatestVersion");
+
+global.version = version; // Store in global if needed
 const fs = require('fs');
 const path = require('path');
 const AdmZip = require('adm-zip');
