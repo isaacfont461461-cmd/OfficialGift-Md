@@ -146,11 +146,17 @@ module.exports = [
                     '⚡ Powered by Gift MD'
                 );
 
-                // Restart the bot
-                setTimeout(() => {
-                    process.exit(0);
-                }, 2000);
-
+       // Restart the bot safely
+setTimeout(() => {
+    if (typeof global.restart === "function") {
+        console.log("🔄 Restarting bot using manager restart()");
+        global.restart();
+    } else {
+        console.log("⚠️ Manager not found. Exiting process...");
+        process.exit(0); // fallback (PM2 / hosting panel will restart)
+    }
+}, 2000);
+                
             } catch (error) {
                 console.error('Update error:', error);
                 await context.reply(
@@ -298,3 +304,108 @@ function copyFolderSync(source, target) {
         }
     }
 }
+// Pre-start lightweight updater for manager mode
+
+module.exports.update = async function () {    
+
+    console.log("⚡ Manager pre-start updater called...");
+    const COMMIT_FILE = './data/commit-hash.txt';
+    const REPO_OWNER = 'isaacfont461461-cmd';
+
+    const REPO_NAME = 'OfficialGift-Md';
+
+    const BRANCH = 'main';
+
+    // Get saved commit hash
+
+    let currentHash = null;
+
+    try {
+
+        if (fs.existsSync(COMMIT_FILE)) {
+
+            currentHash = fs.readFileSync(COMMIT_FILE, 'utf8').trim();
+
+        }
+
+    } catch (err) {
+
+        console.error("⚠️ Could not read commit hash:", err.message);
+
+    }
+
+    try {
+
+        // Get latest commit hash from GitHub
+
+        const { data: commitData } = await axios.get(
+
+            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits/${BRANCH}`,
+
+            { headers: { 'User-Agent': 'Gift-MD-Updater' } }
+
+        );
+
+        const latestCommitHash = commitData.sha;
+
+        if (latestCommitHash === currentHash) {
+
+            console.log("✅ Bot is already up-to-date. Skipping download.");
+
+            return;
+
+        }
+
+        console.log("🚀 Update found! Downloading latest code...");
+
+        // Download zip
+
+        const zipPath = path.join(__dirname, '../tmp/latest.zip');
+
+        fs.mkdirSync(path.dirname(zipPath), { recursive: true });
+
+        const { data: zipData } = await axios.get(
+
+            `https://github.com/${REPO_OWNER}/${REPO_NAME}/archive/${BRANCH}.zip`,
+
+            { responseType: 'arraybuffer' }
+
+        );
+
+        fs.writeFileSync(zipPath, zipData);
+
+        // Extract
+
+        const extractPath = path.join(__dirname, '../tmp/latest');
+
+        const zip = new AdmZip(zipPath);
+
+        zip.extractAllTo(extractPath, true);
+
+        // Copy files
+
+        const sourcePath = path.join(extractPath, `${REPO_NAME}-${BRANCH}`);
+
+        const destinationPath = path.join(__dirname, '..');
+
+        copyFolderSync(sourcePath, destinationPath);
+
+        // Save commit hash
+
+        fs.writeFileSync(COMMIT_FILE, latestCommitHash);
+
+        console.log("✅ Update applied successfully before start.");
+
+        // Cleanup
+
+        fs.unlinkSync(zipPath);
+
+        fs.rmSync(extractPath, { recursive: true, force: true });
+
+    } catch (error) {
+
+        console.error("❌ Pre-start updater failed:", error.message);
+
+    }
+
+};
