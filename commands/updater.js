@@ -308,7 +308,7 @@ function copyFolderSync(source, target) {
 
 module.exports.update = async function () {    
 
-    console.log("⚡ Manager pre-start updater called...");
+    console.log("[GIFT-MD]⚡ Checking For Update...");
     const COMMIT_FILE = './data/commit-hash.txt';
     const REPO_OWNER = 'isaacfont461461-cmd';
 
@@ -350,13 +350,13 @@ module.exports.update = async function () {
 
         if (latestCommitHash === currentHash) {
 
-            console.log("✅ Bot is already up-to-date. Skipping download.");
+            console.log("[GIFT-MD] Is already up-to-date!");
 
             return;
 
         }
 
-        console.log("🚀 Update found! Downloading latest code...");
+        console.log("[GIFT-MD] 🚀 Update found! Downoading...");
 
         // Download zip
 
@@ -394,7 +394,7 @@ module.exports.update = async function () {
 
         fs.writeFileSync(COMMIT_FILE, latestCommitHash);
 
-        console.log("✅ Update applied successfully before start.");
+        console.log("[GIFT-MD] Updated Successful!");
 
         // Cleanup
 
