@@ -13,14 +13,14 @@ if (!process.argv.includes('--bot')) {
         try {
             const updater = require('./commands/updater'); // your updater.js
             if (typeof updater.update === 'function') {
-                console.log(chalk.cyan('🔄 Running updater before bot start...'));
+                console.log(chalk.cyan('[GIFT-MD] 🔄 Running updater!...'));
                 await updater.update(); // run update function
-                console.log(chalk.green('✅ Update check complete.'));
+                console.log(chalk.green('[GIFT-MD] ✅ Update check complete.'));
             } else {
-                console.log(chalk.yellow('⚠️ Updater has no update() function, skipping.'));
+                console.log(chalk.yellow('[GIFT-MD] ⚠️ Updater has no function skipping.'));
             }
         } catch (err) {
-            console.error(chalk.red('❌ Failed to run updater:'), err);
+            console.error(chalk.red('[GIFT-MD] ❌ Failed to run updater:'), err);
         }
     }
 
@@ -33,19 +33,19 @@ if (!process.argv.includes('--bot')) {
         });
 
         botProcess.on('exit', (code) => {
-            console.log(`Bot exited with code ${code}`);
+            console.log(`[GIFT-MD] exited with code ${code}`);
         });
 
-        console.log("Bot started with PID:", botProcess.pid);
+        console.log("[GIFT-MD] started with PID:", botProcess.pid);
     }
 
     global.restart = function () {
         if (botProcess) {
-            console.log("Restarting bot...");
+            console.log("[GIFT-MD] Restarting...");
             botProcess.kill();
             start();
         } else {
-            console.log("No bot process running. Starting new one...");
+            console.log("[GIFT-MD] No bot process running. Starting new one...");
             start();
         }
     };
