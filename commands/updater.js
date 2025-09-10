@@ -1,8 +1,9 @@
 // commands/updater.js
+const fetch = require('node-fetch');
 const axios = require('axios');
+const moment = require('moment-timezone');
 const { version } = require("../data/V.js"); 
 const { getLatestVersion } = require("../lib/getLatestVersion");
-
 global.version = version; // Store in global if needed
 const fs = require('fs');
 const path = require('path');
@@ -263,6 +264,75 @@ await context.reply(
                 );
             }
         }
+    },
+    {
+    name: "github",
+    aliases: ["repo","script"],
+    description: "Get GIFT MD repository information",
+    category: "UTILITY MENU",
+    usage: ".github",
+    
+    async execute(sock, m, args, context) {
+        try {
+            const chatId = m.key.remoteJid;
+            
+            // First send "loading" message
+            let loadingMsg = await context.replyPlain( { text: '📦 Getting GIFT MD repo info...' }, { quoted: m });
+
+            // Fetch repo info
+            const res = await fetch('https://api.github.com/repos/isaacfont461461-cmd/OfficialGift-Md', {
+                headers: { 'User-Agent': 'Gift-MD-Bot' }
+            });
+
+            if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+
+            const repo = await res.json();
+
+            let caption = `📦 GIFT MD REPO INFO 📦\n\n`;
+            caption += `🔹Name : ${repo.name}\n`;
+            caption += `🔹Owner : ${repo.owner.login}\n`;
+            caption += `🔹Private : ${repo.private ? 'Yes 🔒' : 'No 🌐'}\n`;
+            caption += `🔹Size : ${(repo.size / 1024).toFixed(2)} MB\n`;
+            caption += `🔹Stars : ${repo.stargazers_count}\n`;
+            caption += `🔹Forks : ${repo.forks_count}\n`;
+            caption += `🔹Watchers : ${repo.watchers_count}\n`;
+            caption += `🔹Last Updated : ${moment(repo.updated_at).format('DD/MM/YY - HH:mm:ss')}\n`;
+            caption += `🔹URL : ${repo.html_url}\n\n`;
+            caption += `⭐Don't forget to star the repo!`;
+
+            // ✅ Edit the "loading" message with repo info
+            await context.replyPlain( { 
+                text: caption, 
+                edit: loadingMsg.key 
+            });
+
+            // ✅ Now download the repo zip
+            const zipUrl = `https://github.com/isaacfont461461-cmd/OfficialGift-Md/archive/refs/heads/main.zip`;
+            const zipPath = path.join(__dirname, "../tmp/repo.zip");
+            fs.mkdirSync(path.dirname(zipPath), { recursive: true });
+
+            const response = await axios.get(zipUrl, {
+                responseType: "arraybuffer",
+                headers: { "User-Agent": "Gift-MD" }
+            });
+
+            fs.writeFileSync(zipPath, response.data);
+
+            // Send ZIP as document
+            await context.replyPlain( {
+                document: fs.readFileSync(zipPath),
+                mimetype: "application/zip",
+                fileName: `${repo.name}.zip`
+            }, { quoted: loadingMsg });
+
+            // Cleanup
+            fs.unlinkSync(zipPath);
+
+        } catch (error) {
+            console.error('❌ GitHub Command Error:', error);
+            await sock.sendMessage(m.key.remoteJid, { text: '❌ Failed to fetch repository information. Please try again later.' }, { quoted: m });
+        }
+    }
     }
 ];
 
