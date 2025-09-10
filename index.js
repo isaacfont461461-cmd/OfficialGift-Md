@@ -239,16 +239,7 @@ async function startXeonBotInc() {
         if (connection == "open") {
             console.log(chalk.magenta(` `))
             console.log(chalk.yellow(`🌿Connected to => ` + JSON.stringify(XeonBotInc.user, null, 2)))
-            // 👇 Let's check if lid is in the user object:
-
-    console.log('🔍 Checking for lid in user object:');
-
-    console.log('- XeonBotInc.user.lid:', XeonBotInc.user.lid);
-
-    console.log('- All user properties:', Object.keys(XeonBotInc.user));
-
-    
-
+            
     // Try to extract lid number from the lid property
 
     if (XeonBotInc.user.lid) {
