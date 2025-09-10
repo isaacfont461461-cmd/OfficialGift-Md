@@ -288,7 +288,6 @@ function copyFolderSync(source, target) {
         ];
         
         if (preservedFiles.includes(item)) {
-            console.log(`⚠️ Preserving existing file: ${item}`);
             continue;
         }
 
