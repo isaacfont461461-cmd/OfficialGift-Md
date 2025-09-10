@@ -98,9 +98,10 @@ async function createEmojiImage(emoji) {
 }
 
 const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
-const db = require('../lib/database');
+const { db,getSetting, updateSetting } = require('../lib/database');
 const fs = require('fs');
 const axios = require('axios');
+const { channelInfo } = require('../lib/messageConfig');
 const sharp = require('sharp');
 const path = require('path');
 global.offlineInterval = null;
@@ -1070,5 +1071,170 @@ Total: ${newEmojis.length} emojis`);
 
     }
 
-}
+},
+     {
+
+    name: 'anticall',
+
+    description: 'Enable/disable auto call rejection with custom message',
+
+    aliases: ['ac'],
+
+    category: 'owner',
+
+    usage: '.anticall | .anticall on/off | .anticall set <message>',
+
+    
+
+    async execute(sock, message, args, context) {
+
+        try {
+
+            const { reply, senderIsSudo } = context;
+
+            
+
+            // Only owner/sudo can use this command
+
+            if (!message.key.fromMe && !senderIsSudo) {
+
+                return await reply('This command is only available for the owner or sudo users!');
+
+            }
+
+            
+
+            const subCommand = args[1]?.toLowerCase();
+
+            
+
+            // Built-in default message
+
+            const defaultMessage = `Hello! I'm currently busy and cannot take calls right now. Please send me a message instead and I'll get back to you as soon as possible. Thanks for understanding!`;
+
+            
+
+            // Show status and usage if no arguments
+
+            if (!subCommand) {
+
+                const anticallStatus = getSetting('anticall', false);
+
+                const anticallMsg = getSetting('anticallmsg', defaultMessage);
+
+                
+
+                const statusText = `ANTICALL STATUS
+
+                
+
+Current Status: ${anticallStatus ? 'ON' : 'OFF'}
+
+Custom Message: ${anticallMsg}
+
+USAGE:
+
+${global.prefix}anticall on - Enable anticall
+
+${global.prefix}anticall off - Disable anticall  
+
+${global.prefix}anticall set <message> - Set custom rejection message
+
+${global.prefix}anticall default - Reset to default message
+
+When enabled, the bot will automatically reject incoming calls and send the custom message.`;
+
+                
+
+                return await reply(statusText);
+
+            }
+
+            
+
+            // Handle on/off toggle
+
+            if (subCommand === 'on') {
+
+                updateSetting('anticall', true);
+
+                // Set default message if none exists
+
+                if (!getSetting('anticallmsg')) {
+
+                    updateSetting('anticallmsg', defaultMessage);
+
+                }
+
+                return await reply('Anticall has been ENABLED. All incoming calls will be automatically rejected.');
+
+                
+
+            } else if (subCommand === 'off') {
+
+                updateSetting('anticall', false);
+
+                return await reply('Anticall has been DISABLED. Calls will no longer be automatically rejected.');
+
+                
+
+            } else if (subCommand === 'set') {
+
+                // Set custom message
+
+                const customMsg = args.slice(2).join(' ');
+
+                
+
+                if (!customMsg) {
+
+                    return await reply('Please provide a custom message!\n\nExample: .anticall set Sorry, I am busy right now. Please text me instead.');
+
+                }
+
+                
+
+                if (customMsg.length > 200) {
+
+                    return await reply('Custom message is too long! Please keep it under 200 characters.');
+
+                }
+
+                
+
+                updateSetting('anticallmsg', customMsg);
+
+                return await reply(`Anticall custom message has been updated to:\n\n"${customMsg}"`);
+
+                
+
+            } else if (subCommand === 'default') {
+
+                // Reset to default message
+
+                updateSetting('anticallmsg', defaultMessage);
+
+                return await reply(`Anticall message has been reset to default:\n\n"${defaultMessage}"`);
+
+                
+
+            } else {
+
+                return await reply(`Invalid option! Use:\n${global.prefix}anticall on/off/set <message>/default`);
+
+            }
+
+            
+
+        } catch (error) {
+
+            console.error('Error in anticall command:', error);
+
+            await reply('An error occurred while managing anticall settings.');
+
+        }
+
+    }
+
+                }
 ];
