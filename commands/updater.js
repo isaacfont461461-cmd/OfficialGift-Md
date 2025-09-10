@@ -208,6 +208,7 @@ setTimeout(() => {
                 const author = commitData.commit.author.name;
                 
                 const currentHash = getCommitHash();
+                const latestVersion = await getLatestVersion();
 
                 if (latestCommitHash === currentHash) {
                     return await context.reply(
@@ -244,7 +245,6 @@ setTimeout(() => {
                 } catch (error) {
                     console.log('Could not fetch detailed changelog:', error.message);
                 }
-const latestVersion = await getLatestVersion();
 await context.reply(
     `🆕 Update Available!\n\n` +
     `Current Version: \`${global.version || 'Unknown'}\`\n` +
