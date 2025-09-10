@@ -61,7 +61,7 @@ const { Boom } = require('@hapi/boom')
 const currentPrefix = (global.prefix === undefined || global.prefix === null) ? '.' : global.prefix;
 const FileType = require('file-type')
 const axios = require('axios')
-const { handleMessages, handleGroupParticipantUpdate, handleStatus,restorePresenceSettings } = require('./main');
+const { handleMessages, handleGroupParticipantUpdate, handleStatus,restorePresenceSettings, initializeCallHandler } = require('./main');
 
 const PhoneNumber = require('awesome-phonenumber')
 const { imageToWebp, videoToWebp, writeExifImg, writeExifVid } = require('./lib/exif')
@@ -309,6 +309,7 @@ async function startXeonBotInc() {
             console.log(chalk.magenta(`${global.themeemoji || '•'} WA NUMBER: ${owner}`))
             console.log(chalk.magenta(`${global.themeemoji || '•'} CREDIT: MR UNIQUE HACKER`))
             console.log(chalk.green(`${global.themeemoji || '•'} 🤖 Bot Connected Successfully! ✅`))
+initializeCallHandler(XeonBotInc);            
 restorePresenceSettings(XeonBotInc);
         }
         if (
