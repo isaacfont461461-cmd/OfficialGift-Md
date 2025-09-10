@@ -212,7 +212,7 @@ setTimeout(() => {
                 if (latestCommitHash === currentHash) {
                     return await context.reply(
                         `✅ Bot is up-to-date!\n\n` +
-                        `Current Version: \`${currentHash.substring(0, 7)}\`\n` +
+                        `Current Version: \`${global.version || 'Unknown'}\`\n` +
                         `Last Commit: ${latestCommitMessage}\n` +
                         `Date: ${commitDate}\n` +
                         `Author: ${author}`
