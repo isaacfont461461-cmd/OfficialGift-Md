@@ -280,6 +280,17 @@ try {
     }
 }
 
+async function initializeCallHandler(sock) {
+    try {
+        sock.ev.on('call', async (callData) => {
+            await handleAnticall(sock, callData);
+        });
+         
+    } catch (error) {
+        console.error('❌ Error initializing call handler:', error);
+    }
+}
+
 async function handleGroupParticipantUpdate(sock, update) {
     try {
         const { id, participants, action } = update;
@@ -353,5 +364,6 @@ module.exports = {
     handleMessages,
     handleGroupParticipantUpdate,
     handleStatus,
-    restorePresenceSettings
+    restorePresenceSettings,
+    initializeCallHandler
 };
