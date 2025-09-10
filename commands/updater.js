@@ -278,7 +278,7 @@ await context.reply(
             
             // First send "loading" message
             let loadingMsg = await context.replyPlain( { text: '📦 Getting GIFT MD repo info...' }, { quoted: m });
-
+                await context.react('♻️');
             // Fetch repo info
             const res = await fetch('https://api.github.com/repos/isaacfont461461-cmd/OfficialGift-Md', {
                 headers: { 'User-Agent': 'Gift-MD-Bot' }
@@ -305,7 +305,7 @@ await context.reply(
                 text: caption, 
                 edit: loadingMsg.key 
             });
-
+            await context.react('🤠');
             // ✅ Now download the repo zip
             const zipUrl = `https://github.com/isaacfont461461-cmd/OfficialGift-Md/archive/refs/heads/main.zip`;
             const zipPath = path.join(__dirname, "../tmp/repo.zip");
