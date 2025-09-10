@@ -4,7 +4,7 @@ const { buildContext } = require('./lib/context');
 // Load database
 const { commandData, saveDatabase } = require('./lib/database.js');
 const { isBanned } = require('./lib/isBanned');
-const { handleMessageCases, handleAutotypingForMessage, handleAutoReaction,handleAutoread, handleStatusUpdate,handleAutoRecord,handleAutoRecordType } = require('./lib/case');
+const { handleMessageCases, handleAutotypingForMessage, handleAutoReaction,handleAutoread, handleStatusUpdate,handleAutoRecord,handleAutoRecordType, handleAnticall } = require('./lib/case');
 const fs = require('fs');
 const { getSetting,getWelcome, getGoodbye, isWelcomeEnabled, isGoodbyeEnabled } = require('./lib/database');
 const { isSudo } = require('./lib/database');
