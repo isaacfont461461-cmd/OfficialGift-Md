@@ -4,7 +4,7 @@ const { syncMode } = require('./topmembers');
 const fsp = fs.promises;
 const axios = require('axios');
 const path = require('path');
-
+const { channelInfo } = require('../lib/messageConfig');
 const { sleep, isUrl } = require('../lib/myfunc');
 
 const { promisify } = require('util');
@@ -991,5 +991,103 @@ await react('😱');
 
     }
 
+},
+{
+    name: 'broadcast',
+    description: 'Send message to all group members individually via DM',
+    aliases: ['bc', 'massdm'],
+    category: 'owner',
+    usage: '.broadcast <message>',
+    
+    async execute(sock, message, args, context) {
+        try {
+            const { reply, senderIsSudo, chatId, isGroup } = context;
+            
+            // Only owner/sudo can use this command
+            if (!message.key.fromMe && !senderIsSudo) {
+                return await reply('This command is only available for the owner or sudo users!');
+            }
+            
+            // Must be used in a group
+            if (!isGroup) {
+                return await reply('This command can only be used in groups!');
+            }
+            
+            // Get message to broadcast
+            const broadcastMsg = args.slice(1).join(' ');
+            
+            if (!broadcastMsg) {
+                return await reply(`Please provide a message to broadcast!\n\nUsage: ${global.prefix}broadcast <your message>`);
+            }
+            
+            if (broadcastMsg.length > 500) {
+                return await reply('Message is too long! Please keep it under 500 characters.');
+            }
+            
+            try {
+                // Get group metadata and participants
+                const groupMetadata = await sock.groupMetadata(chatId);
+                const participants = groupMetadata.participants;
+                const groupName = groupMetadata.subject;
+                
+                await reply(`Starting broadcast to ${participants.length} members...\n\nThis may take a few minutes to avoid spam detection.`);
+                
+                let successCount = 0;
+                let failCount = 0;
+                
+                // Message each participant individually
+                for (const participant of participants) {
+                    const userJid = participant.id;
+                    
+                    // Skip the bot itself
+                    if (userJid === sock.user.id) continue;
+                    
+                    try {
+                        // Create personalized message
+                        const personalizedMsg = `BROADCAST MESSAGE
+From Group: ${groupName}
+
+${broadcastMsg}
+
+This message was sent individually to all group members.`;
+                        
+                        await sock.sendMessage(userJid, {
+                            text: personalizedMsg,
+                            ...channelInfo
+                        });
+                        
+                        successCount++;
+                        console.log(`📤 Broadcast sent to: ${userJid}`);
+                        
+                        // Delay to avoid spam detection (2-3 seconds between messages)
+                        await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 2000));
+                        
+                    } catch (error) {
+                        failCount++;
+                        console.log(`❌ Failed to message ${userJid}:`, error.message);
+                    }
+                }
+                
+                // Send completion report
+                const reportMsg = `BROADCAST COMPLETED
+                
+Total Members: ${participants.length}
+Successfully Sent: ${successCount}
+Failed: ${failCount}
+
+Note: Failed messages are usually due to users blocking the bot or privacy settings.`;
+                
+                await reply(reportMsg);
+                
+            } catch (error) {
+                console.error('Error getting group metadata:', error);
+                await reply('Failed to get group information. Make sure the bot is still in the group.');
+            }
+            
+        } catch (error) {
+            console.error('Error in broadcast command:', error);
+            await reply('An error occurred while broadcasting the message.');
+        }
+    }
 }
 ];
