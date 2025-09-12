@@ -52,9 +52,7 @@ if (!process.argv.includes('--bot')) {
     start();
     return; // stop here in manager mode
 }
-
 //=========== BOT MODE==========//
-
 require('./settings')
 const { channelInfo } = require('./lib/messageConfig')
 const { Boom } = require('@hapi/boom')
@@ -90,6 +88,9 @@ const { PHONENUMBER_MCC } = require('@whiskeysockets/baileys/lib/Utils/generics'
 const { rmSync, existsSync } = require('fs')
 const { join } = require('path')
 // Create a store object with required methods
+console.log(chalk.cyan('┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓'))
+    console.log(chalk.cyan('┃') + chalk.white.bold('          🤖 GIFT MD BOT STARTING...        ') + chalk.cyan(' ┃'))
+    console.log(chalk.cyan('┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛'))
 const store = {
     messages: {},
     contacts: {},
@@ -266,23 +267,43 @@ async function startXeonBotInc() {
         setTimeout(async () => {
             try {
                 let code = await XeonBotInc.requestPairingCode(phoneNumber)
-                code = code?.match(/.{1,4}/g)?.join("-") || code
-                console.log(chalk.black(chalk.bgGreen(`Your Pairing Code : `)), chalk.black(chalk.white(code)))
-                console.log(chalk.yellow(`\nPlease enter this code in your WhatsApp app:\n1. Open WhatsApp\n2. Go to Settings > Linked Devices\n3. Tap "Link a Device"\n4. Enter the code shown above`))
-            } catch (error) {
-                console.error('Error requesting pairing code:', error)
-                console.log(chalk.red('Failed to get pairing code. Please check your phone number and try again.'))
-            }
-        }, 3000)
-    }
+                    code = code?.match(/.{1,4}/g)?.join("-") || code
+
+                    console.log('')
+                    console.log(chalk.green('┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓'))
+                    console.log(chalk.green('┃') + chalk.white.bold('              PAIRING CODE               ') + chalk.green('┃'))
+                    console.log(chalk.green('┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛'))
+                    console.log('')
+                    console.log(chalk.cyan.bold(`    ${code}    `))
+                    console.log('')
+                    console.log(chalk.yellow('📱 How to link your WhatsApp:'))
+                    console.log(chalk.white('1. Open WhatsApp on your phone'))
+                    console.log(chalk.white('2. Go to Settings > Linked Devices'))
+                    console.log(chalk.white('3. Tap "Link a Device"'))
+                    console.log(chalk.white('4. Enter the code: ') + chalk.green.bold(code))
+                    console.log('')
+                    console.log(chalk.cyan.bold('⏱️  Code expires in 1 minute'))
+                    console.log('')
+
+                } catch (error) {
+                    console.error('')
+                    console.log(chalk.red('❌ Failed to generate pairing code'))
+                    console.log(chalk.yellow('Error details:'), error.message)
+                    console.log(chalk.gray('Please check your internet connection and try again'))
+                    process.exit(1)
+                }
+            }, 3000)
+        }
 
     // Connection handling
     XeonBotInc.ev.on('connection.update', async (s) => {
         const { connection, lastDisconnect } = s
         if (connection == "open") {
-            console.log(chalk.magenta(` `))
-            console.log(chalk.yellow(`🌿Connected to => ` + JSON.stringify(XeonBotInc.user, null, 2)))
-            
+            console.log(chalk.green('┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓'))
+                console.log(chalk.green('┃') + chalk.white.bold('          ✅ CONNECTION SUCCESSFUL!        ') + chalk.green('┃'))
+                console.log(chalk.green('┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛'))
+                console.log('') 
+                
     // Try to extract lid number from the lid property
 
     if (XeonBotInc.user.lid) {
@@ -302,13 +323,16 @@ async function startXeonBotInc() {
             });
 
             await delay(1999)
-            console.log(chalk.yellow(`\n\n                  ${chalk.bold.blue(`[ ${global.botname || 'GIFT MD'} ]`)}\n\n`))
-            console.log(chalk.cyan(`< ================================================== >`))
-            console.log(chalk.magenta(`\n${global.themeemoji || '•'} YT CHANNEL: MR UNIQUE HACKER`))
-            console.log(chalk.magenta(`${global.themeemoji || '•'} GITHUB: mrunqiuehacker`))
-            console.log(chalk.magenta(`${global.themeemoji || '•'} WA NUMBER: ${owner}`))
-            console.log(chalk.magenta(`${global.themeemoji || '•'} CREDIT: MR UNIQUE HACKER`))
-            console.log(chalk.green(`${global.themeemoji || '•'} 🤖 Bot Connected Successfully! ✅`))
+                console.log(chalk.cyan('┌──────────────────────────────────────────────┐'))
+                console.log(chalk.cyan('│')+ chalk.bold.blue('                 │ GIFT-MD │'))
+                console.log(chalk.cyan('├──────────────────────────────────────────────┘'))
+                console.log(chalk.cyan('│ ') + chalk.white('• Bot Status: ') + chalk.green('Connected Successfully ✅') + chalk.cyan('        │'))
+console.log(chalk.cyan('│ ') + chalk.white('• Owner: ') + chalk.yellow(owner) + chalk.cyan('          │'))
+                console.log(chalk.cyan('│ ') + chalk.white('• Phone: ') + chalk.yellow(XeonBotInc.user.id.split(':')[0]) + chalk.cyan('                        │'))
+                console.log(chalk.cyan('│ ') + chalk.white('• Time: ') + chalk.yellow(new Date().toLocaleString()) + chalk.cyan('                 │'))
+                console.log(chalk.cyan('│ ') + chalk.white('• Commands: Send .listcmd to see available CMD') + chalk.cyan('│'))
+                console.log(chalk.cyan('└──────────────────────────────────────────────┘'))
+                console.log('')
 initializeCallHandler(XeonBotInc);            
 restorePresenceSettings(XeonBotInc);
         }
