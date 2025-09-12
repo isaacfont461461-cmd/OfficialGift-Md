@@ -1,7 +1,5 @@
 const settings = require('./settings');
 const { buildContext } = require('./lib/context');
-//require('./config.js');
-// Load database
 const { commandData, saveDatabase } = require('./lib/database.js');
 const { isBanned } = require('./lib/isBanned');
 const { handleMessageCases, handleAutotypingForMessage, handleAutoReaction,handleAutoread, handleStatusUpdate,handleAutoRecord,handleAutoRecordType, handleAnticall } = require('./lib/case');
