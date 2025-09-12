@@ -1507,5 +1507,61 @@ module.exports = [
 
     }
 
-}
+},
+   {
+    name: "simp",
+    description: "Call someone a simp (playfully)",
+    category: "FUN MENU",
+    usage: ".simp [@user]",
+    
+    async execute(sock, m, args, context) {
+        try {
+            const chatId = m.key.remoteJid;
+            
+            const simpMessages = [
+                "💸 You're such a simp, you'd pay for someone's OnlyFans and say it's for the personality! 😂",
+                "🤡 Simp level: Buying her groceries when she has a boyfriend! 🛒",
+                "💔 You're simping so hard, you're in the friend zone before you even talk! 📱",
+                "🎭 Professional simp detected! You've mastered the art of unrequited love! 💕",
+                "💸 You're the type to donate your life savings and get a 'thank you bestie' back! 💸",
+                "🤡 Simp alert! You probably write essays in her DMs and get left on read! 📝",
+                "💔 You're simping harder than a Discord mod! 🎮",
+                "🎭 You'd probably name your pet after your crush! 🐕",
+                "💸 You're the CEO of Simp Nation! 🏢",
+                "🤡 You probably screenshot every conversation and analyze it with friends! 📱",
+                "💔 Simp level: Maximum! You'd probably ask 'how was your day' every morning! ☀️",
+                "🎭 You're simping so hard, you make romantic comedies look realistic! 🎬",
+                "💸 You'd probably offer to do her homework and she'd still pick the bad boy! 📚",
+                "🤡 Certified simp! You probably have her notifications on special ring tone! 🔔",
+                "💔 You're the type to wait 6 hours to reply so you don't look desperate! ⏰"
+            ];
+            
+            const randomMessage = simpMessages[Math.floor(Math.random() * simpMessages.length)];
+            
+            let targetUser = null;
+            let message = '';
+            
+            if (m.message?.extendedTextMessage?.contextInfo?.mentionedJid?.length > 0) {
+                targetUser = m.message.extendedTextMessage.contextInfo.mentionedJid[0];
+                message = `🤡 Simp Alert for @${targetUser.split('@')[0]}!\n\n${randomMessage}\n\nJust playing around! Respect the hustle! 😎`;
+            } else if (m.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
+                targetUser = m.message.extendedTextMessage.contextInfo.participant;
+                message = `🤡 Simp Alert for @${targetUser.split('@')[0]}!\n\n${randomMessage}\n\nJust playing around! Respect the hustle! 😎`;
+            } else {
+                message = `🤡 Random Simp Facts:\n\n${randomMessage}\n\nWe've all been there! 😅`;
+            }
+            
+            await context.replyPlain({
+                text: message,
+                mentions: targetUser ? [targetUser] : []
+            }, { quoted: m });
+
+        } catch (error) {
+            console.error('❌ Simp Command Error:', error);
+            await context.reply({
+                text: '❌ Failed to send simp message. Please try again.'
+            }, { quoted: m });
+        }
+    }
+   }
 ];
