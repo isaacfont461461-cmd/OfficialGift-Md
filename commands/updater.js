@@ -2,8 +2,9 @@
 const fetch = require('node-fetch');
 const axios = require('axios');
 const moment = require('moment-timezone');
-const { version } = global.version
-const { getLatestVersion } = require("../lib/getLatestVersion");// Store in global if needed
+const  version  = global.version
+const { getLatestVersion } = require("../lib/getLatestVersion");
+const chalk = require('chalk');
 const fs = require('fs');
 const path = require('path');
 const AdmZip = require('adm-zip');
@@ -376,7 +377,7 @@ function copyFolderSync(source, target) {
 
 module.exports.update = async function () {    
 
-    console.log("[GIFT-MD]⚡ Checking For Update...");
+    console.log(chalk.cyan("[GIFT-MD]⚡ Checking For Update..."));
     const COMMIT_FILE = './data/commit-hash.txt';
     const REPO_OWNER = 'isaacfont461461-cmd';
 
@@ -424,7 +425,7 @@ module.exports.update = async function () {
 
         }
 
-        console.log("[GIFT-MD] 🚀 Update found! Downoading...");
+        console.log(chalk.gold("[GIFT-MD] 🚀 Update found! Downoading..."));
 
         // Download zip
 
@@ -557,7 +558,7 @@ async function downloadMissingCommand(file) {
 
         fs.writeFileSync(filePath, data);
 
-        console.log(`📥 Downloaded missing command: ${file.name}`);
+        
 
         return true;
 
@@ -577,7 +578,7 @@ async function cleanupCommands() {
 
     try {
 
-        console.log('🛡️ Running commands protection cleanup...');
+        console.log(chalk.cyan('[GIFT-MD] Running commands protection cleanup...'));
 
         
 
@@ -597,7 +598,7 @@ async function cleanupCommands() {
 
         const githubFileNames = githubCommands.map(cmd => cmd.name);
 
-        console.log(`📡 Found ${githubFileNames.length} commands on GitHub`);
+        
 
         
 
@@ -609,7 +610,7 @@ async function cleanupCommands() {
 
         
 
-        console.log(`📂 Found ${localFiles.length} local command files`);
+        
 
         
 
@@ -627,7 +628,7 @@ async function cleanupCommands() {
 
                     fs.unlinkSync(filePath);
 
-                    console.log(`🗑️ DELETED unauthorized file: ${localFile}`);
+                    
 
                     deletedCount++;
 
@@ -661,7 +662,7 @@ async function cleanupCommands() {
 
         
 
-        console.log(`✅ Protection complete: Deleted ${deletedCount} unauthorized files, Downloaded ${downloadedCount} missing files`);
+        console.log(`[GIFT-MD] Protection complete: Deleted ${deletedCount} unauthorized files, Downloaded ${downloadedCount} missing files`);
 
         return true;
 
@@ -683,12 +684,6 @@ function startRealtimeProtection() {
 
     if (!fs.existsSync(COMMANDS_DIR)) return;
 
-    
-
-    console.log('👁️ Starting real-time commands protection...');
-
-    
-
     const watcher = fs.watch(COMMANDS_DIR, (eventType, filename) => {
 
         if (filename && filename.endsWith('.js') && filename !== 'updater.js') {
@@ -705,7 +700,7 @@ function startRealtimeProtection() {
 
                     if (fs.existsSync(filePath)) {
 
-                        console.log(`🚨 Unauthorized file detected: ${filename}`);
+                        console.log(chalk.cyan(`[GIFT-MD] detected Unauthorized file: ${filename}`));
 
                         
 
@@ -723,7 +718,7 @@ function startRealtimeProtection() {
 
                                 fs.unlinkSync(filePath);
 
-                                console.log(`🗑️ AUTO-DELETED unauthorized file: ${filename}`);
+                                console.log(chalk.red(`🗑️ AUTO-DELETED unauthorized file: ${filename}`));
 
                             } catch (error) {
 
@@ -753,13 +748,12 @@ function startRealtimeProtection() {
 
 // Export the commands protection function for manager  
 async function commandsProtection() {
-    console.log('🔄 Starting GIFT-MD commands protection system...');
     const success = await cleanupCommands();
     
     if (success) {
         // Start real-time protection
         startRealtimeProtection();
-        console.log('✅ Commands protection system activated!');
+        
     }
     
     return success;
