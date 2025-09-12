@@ -2,9 +2,8 @@
 const fetch = require('node-fetch');
 const axios = require('axios');
 const moment = require('moment-timezone');
-const { version } = require("../data/V.js"); 
-const { getLatestVersion } = require("../lib/getLatestVersion");
-global.version = version; // Store in global if needed
+const { version } = global.version
+const { getLatestVersion } = require("../lib/getLatestVersion");// Store in global if needed
 const fs = require('fs');
 const path = require('path');
 const AdmZip = require('adm-zip');
