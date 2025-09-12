@@ -45,25 +45,25 @@ const restorePresenceSettings = async (sock) => {
             global.onlineInterval = setInterval(async () => {
                 try {
                     await sock.sendPresenceUpdate('available');
-                    console.log('📱 Presence updated: Online (restored)');
+                    
                 } catch (error) {
                     console.error('❌ Error updating presence:', error);
                 }
             }, 30000);
             
-            console.log('🟢 Always online mode restored');
+            
             
         } else if (alwaysOffline) {
             global.offlineInterval = setInterval(async () => {
                 try {
                     await sock.sendPresenceUpdate('unavailable');
-                    console.log('📱 Presence updated: Offline (restored)');
+                    
                 } catch (error) {
                     console.error('❌ Error updating presence:', error);
                 }
             }, 10000);
             
-            console.log('🔴 Always offline mode restored');
+            
         }
         
     } catch (error) {
@@ -386,3 +386,4 @@ module.exports = {
     restorePresenceSettings,
     initializeCallHandler
 };
+    
