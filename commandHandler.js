@@ -72,7 +72,7 @@ function loadCommandFile(filePath) {
 
             }
 
-            console.log(
+           /** console.log(
 
                 chalk.greenBright(
 
@@ -80,7 +80,7 @@ function loadCommandFile(filePath) {
 
                 )
 
-            );
+            );*/
 
         });
 
