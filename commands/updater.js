@@ -105,14 +105,14 @@ module.exports = [
                 fs.writeFileSync(zipPath, zipData);
 
                 // Extract ZIP file
-                await context.reply('📦 Extracting the latest code...');
+                await context.replyPlain('📦 Extracting the latest code...');
 
                 const extractPath = path.join(__dirname, '../tmp/latest');
                 const zip = new AdmZip(zipPath);
                 zip.extractAllTo(extractPath, true);
 
                 // Copy updated files
-                await context.reply('🔄 Replacing files while preserving your config...');
+                await context.replyPlain('🔄 Replacing files while preserving your config...');
 
                 const sourcePath = path.join(extractPath, `${REPO_NAME}-${BRANCH}`);
                 const destinationPath = path.join(__dirname, '..');
@@ -127,7 +127,7 @@ module.exports = [
                 fs.rmSync(extractPath, { recursive: true, force: true });
 
                 // Progress simulation
-                let progressMsg = await context.reply('🔄 Installing updates: [▒▒▒▒▒▒▒▒] 0%');
+                let progressMsg = await context.replyPlain('🔄 Installing updates: [▒▒▒▒▒▒▒▒] 0%');
                 
                 const progressStages = [
                     '🔄 Installing updates: [████▒▒▒▒] 40%',
@@ -137,11 +137,11 @@ module.exports = [
                 
                 for (const progress of progressStages) {
                     await new Promise(resolve => setTimeout(resolve, 800));
-                    await context.reply(progress);
+                    await context.replyPlain(progress);
                 }
 
                 // Final success message
-                await context.reply(
+                await context.replyPlain(
                     '✅ Update complete!\n\n' +
                     'Restarting the bot to apply changes...\n\n' +
                     '⚡ Powered by Gift MD'
@@ -212,7 +212,7 @@ setTimeout(() => {
                 const latestVersion = await getLatestVersion();
 
                 if (latestCommitHash === currentHash) {
-                    return await context.reply(
+                    return await context.replyPlain(
                         `✅ Bot is up-to-date!\n\n` +
                         `Current Version: \`${latestVersion || 'Unknown'}\`\n` +
                         `Last Commit: ${latestCommitMessage}\n` +
@@ -246,7 +246,7 @@ setTimeout(() => {
                 } catch (error) {
                     console.log('Could not fetch detailed changelog:', error.message);
                 }
-await context.reply(
+await context.replyPlain(
     `🆕 Update Available!\n\n` +
     `Current Version: \`${global.version || 'Unknown'}\`\n` +
     `Latest Version: \`${latestVersion || 'Unknown'}\`\n` +
