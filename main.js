@@ -12,7 +12,7 @@ const { incrementMessageCount, topMembers } = require('./commands/topmembers');
 const { handleChatbotCommand, handleChatbotResponse } = require('./commands/chatbot');
 const antidelete = require('./commands/antidelete');
 const antiedit = require('./commands/antiedit');
-// Import command handler
+// Import command handle
 const { commands, aliases, loadCommands, categories } = require('./commandHandler');
 console.log('[GIFT-MD] connected to Loader 🚀');
 // Initialize commands
