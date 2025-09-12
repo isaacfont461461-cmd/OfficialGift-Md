@@ -2,10 +2,10 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const chalk = require('chalk');
-
-// ================= MANAGER MODE =================
+// ======== MANAGER MODE ========//
 if (!process.argv.includes('--bot')) {
     let botProcess;
+    let isRestarting = false; // Add restart flag
 
     // ✅ Run updater before starting bot
     async function runUpdater() {
@@ -24,6 +24,11 @@ if (!process.argv.includes('--bot')) {
     }
 
     async function start() {
+        if (isRestarting) {
+            console.log("[GIFT-MD] Already restarting, please wait...");
+            return;
+        }
+
         await runUpdater(); // <--- run updater first
 
         let args = [path.join(__dirname, 'index.js'), '--bot', ...process.argv.slice(2)];
@@ -33,21 +38,75 @@ if (!process.argv.includes('--bot')) {
 
         botProcess.on('exit', (code) => {
             console.log(`[GIFT-MD] exited with code ${code}`);
+            
+            // ✅ Auto-restart on unexpected exit (but not during manual restart)
+            if (!isRestarting && code !== 0) {
+                console.log("[GIFT-MD] Unexpected exit, restarting in 3 seconds...");
+                setTimeout(() => {
+                    start();
+                }, 3000);
+            } else if (isRestarting) {
+                // Manual restart - start immediately after proper exit
+                isRestarting = false;
+                console.log("[GIFT-MD] Restarting now...");
+                setTimeout(() => {
+                    start();
+                }, 1000);
+            }
+        });
+
+        botProcess.on('error', (error) => {
+            console.error('[GIFT-MD] Process error:', error);
         });
 
         console.log("[GIFT-MD] started with PID:", botProcess.pid);
     }
 
     global.restart = function () {
-        if (botProcess) {
-            console.log("[GIFT-MD] Restarting...");
-            botProcess.kill();
-            start();
+        if (isRestarting) {
+            console.log("[GIFT-MD] Restart already in progress...");
+            return;
+        }
+
+        isRestarting = true;
+        
+        if (botProcess && !botProcess.killed) {
+            console.log("[GIFT-MD] Gracefully stopping bot...");
+            
+            // Try graceful shutdown first
+            botProcess.kill('SIGTERM');
+            
+            // Force kill after 5 seconds if not stopped
+            setTimeout(() => {
+                if (botProcess && !botProcess.killed) {
+                    console.log("[GIFT-MD] Force killing bot...");
+                    botProcess.kill('SIGKILL');
+                }
+            }, 5000);
+            
         } else {
             console.log("[GIFT-MD] No bot process running. Starting new one...");
+            isRestarting = false;
             start();
         }
     };
+
+    // ✅ Graceful shutdown on process signals
+    process.on('SIGINT', () => {
+        console.log('\n[GIFT-MD] Received SIGINT, shutting down gracefully...');
+        if (botProcess) {
+            botProcess.kill('SIGTERM');
+        }
+        process.exit(0);
+    });
+
+    process.on('SIGTERM', () => {
+        console.log('[GIFT-MD] Received SIGTERM, shutting down gracefully...');
+        if (botProcess) {
+            botProcess.kill('SIGTERM');
+        }
+        process.exit(0);
+    });
 
     start();
     return; // stop here in manager mode
