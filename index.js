@@ -3,54 +3,29 @@ const path = require('path');
 const fs = require('fs');
 const chalk = require('chalk');
 // ======== MANAGER MODE ========//
-if (!process.argv.includes('--bot')) {
-    let botProcess;
+const chalk = require('chalk');
+const { updateBot, folderProtection } = require('./path/to/your/protection');
 
-    // ✅ Run updater before starting bot
-    async function runUpdater() {
-        try {
-            const updater = require('./commands/updater'); // your updater.js
-            if (typeof updater.update === 'function') {
-                console.log(chalk.cyan('[GIFT-MD] 🔄 Running updater!...'));
-                await updater.update(); // run update function
-                console.log(chalk.green('[GIFT-MD] ✅ Update check complete.'));
-            } else {
-                console.log(chalk.yellow('[GIFT-MD] ⚠️ Updater has no function skipping.'));
-            }
-        } catch (err) {
-            console.error(chalk.red('[GIFT-MD] ❌ Failed to run updater:'), err);
-        }
+async function runUpdater() {
+    try {
+        console.log(chalk.cyan('[GIFT-MD] 🔄 Running updater!...'));
+        
+        // Update bot code
+        await updateBot();
+        
+        // Protect critical folders
+        await folderProtection('commands');
+        await folderProtection('lib');
+        
+        console.log(chalk.green('[GIFT-MD] ✅ Update & protection complete.'));
+    } catch (err) {
+        console.error(chalk.red('[GIFT-MD] ❌ Failed to run updater:'), err);
     }
-
-    async function start() {
-        await runUpdater(); // <--- run updater first
-
-        let args = [path.join(__dirname, 'index.js'), '--bot', ...process.argv.slice(2)];
-        botProcess = spawn(process.argv[0], args, {
-            stdio: ['inherit', 'inherit', 'inherit', 'ipc']
-        });
-
-        botProcess.on('exit', (code) => {
-            console.log(`[GIFT-MD] exited with code ${code}`);
-        });
-
-        console.log("[GIFT-MD] started with PID:", botProcess.pid);
-    }
-
-    global.restart = function () {
-        if (botProcess) {
-            console.log("[GIFT-MD] Restarting...");
-            botProcess.kill();
-            start();
-        } else {
-            console.log("[GIFT-MD] No bot process running. Starting new one...");
-            start();
-        }
-    };
-
-    start();
-    return; // stop here in manager mode
 }
+
+(async () => {
+    await runUpdater();
+    
 //=========== BOT MODE==========//
 require('./settings')
 const { channelInfo } = require('./lib/messageConfig')
@@ -381,3 +356,4 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (err) => {
     console.error('Unhandled Rejection:', err)
 })
+})();
