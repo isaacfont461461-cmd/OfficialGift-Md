@@ -5,7 +5,6 @@ const chalk = require('chalk');
 // ======== MANAGER MODE ========//
 if (!process.argv.includes('--bot')) {
     let botProcess;
-
     // ✅ Run updater before starting bot
     async function runUpdater() {
         try {
@@ -50,7 +49,7 @@ if (!process.argv.includes('--bot')) {
 
     start();
     return; // stop here in manager mode
-}*/
+}
 
 //=========== BOT MODE==========//
 require('./settings')
