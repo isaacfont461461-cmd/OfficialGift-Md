@@ -134,7 +134,7 @@ async function fileProtection(filePath) {
 
         const githubFiles = data.map(f => f.name);
         if (!githubFiles.includes(fileName)) {
-            console.log(chalk.yellow(`⚠️ File ${fileName} not found on GitHub. Skipping.`));
+            console.log(chalk.yellow(`⚠️ File ${fileName} not found Skipping...`));
             return;
         }
 
@@ -150,9 +150,6 @@ async function fileProtection(filePath) {
 // ===== REAL-TIME MONITORING & AUTO-RESTORE =====
 function startRealtimeProtection(folderPath) {
     if (!fs.existsSync(folderPath)) return;
-
-    console.log(chalk.cyan(`[GIFT-MD] 🛡️ Real-time monitoring activated for: ${folderPath}`));
-
     const watcher = fs.watch(folderPath, async (eventType, filename) => {
         if (!filename.endsWith('.js')) return;
         const filePath = path.join(folderPath, filename);
