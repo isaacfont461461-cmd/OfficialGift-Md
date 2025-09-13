@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const chalk = require('chalk');
 // ======== MANAGER MODE ========//
-const { updateBot, folderProtection } = require('./path/to/your/protection');
+const { updateBot, folderProtection } = require('./commands/protection');
 
 async function runUpdater() {
     try {
