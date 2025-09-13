@@ -154,7 +154,7 @@ setTimeout(() => {
         global.restart();
     } else {
         console.log("⚠️ Manager not found. Exiting process...");
-        process.exit(0); // fallback (PM2 / hosting panel will restart)
+        process.exit(1); // fallback (PM2 / hosting panel will restart)
     }
 }, 2000);
                 
