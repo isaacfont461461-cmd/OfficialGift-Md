@@ -48,7 +48,7 @@ async function updateBot() {
             return;
         }
 
-        console.log(chalk.gold("[GIFT-MD] 🚀 Update found! Downloading..."));
+        console.log(chalk.cyan("[GIFT-MD] 🚀 Update found! Downloading..."));
 
         const zipPath = path.join(__dirname, '../tmp/latest.zip');
         const extractPath = path.join(__dirname, '../tmp/latest');
