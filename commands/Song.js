@@ -3,8 +3,8 @@ const { channelInfo } = require('../lib/messageConfig');
 
 module.exports = [
     {
-        name: 'song',
-        aliases: ['music', 'play', 'yt'],
+        name: 'pls',
+        aliases: ['msc'],
         category: 'media',
         description: 'Search and download songs from YouTube',
         usage: '.song <song name>',
