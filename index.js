@@ -5,23 +5,30 @@ const chalk = require('chalk');
 // ======== MANAGER MODE ========//
 if (!process.argv.includes('--bot')) {
     let botProcess;
-    // ✅ Run updater before starting bot
+    let isRestarting = false; // Add restart flag
+
+    // âœ… Run updater before starting bot
     async function runUpdater() {
         try {
             const updater = require('./commands/updater'); // your updater.js
             if (typeof updater.update === 'function') {
-                console.log(chalk.cyan('[GIFT-MD] 🔄 Running updater!...'));
+                console.log(chalk.cyan('[GIFT-MD] ðŸ”„ Running updater!...'));
                 await updater.update(); // run update function
-                console.log(chalk.green('[GIFT-MD] ✅ Update check complete.'));
+                console.log(chalk.green('[GIFT-MD] âœ… Update check complete.'));
             } else {
-                console.log(chalk.yellow('[GIFT-MD] ⚠️ Updater has no function skipping.'));
+                console.log(chalk.yellow('[GIFT-MD] âš ï¸ Updater has no function skipping.'));
             }
         } catch (err) {
-            console.error(chalk.red('[GIFT-MD] ❌ Failed to run updater:'), err);
+            console.error(chalk.red('[GIFT-MD] âŒ Failed to run updater:'), err);
         }
     }
 
     async function start() {
+        if (isRestarting) {
+            console.log("[GIFT-MD] Already restarting, please wait...");
+            return;
+        }
+
         await runUpdater(); // <--- run updater first
 
         let args = [path.join(__dirname, 'index.js'), '--bot', ...process.argv.slice(2)];
@@ -31,26 +38,79 @@ if (!process.argv.includes('--bot')) {
 
         botProcess.on('exit', (code) => {
             console.log(`[GIFT-MD] exited with code ${code}`);
+            
+            // âœ… Auto-restart on unexpected exit (but not during manual restart)
+            if (!isRestarting && code !== 0) {
+                console.log("[GIFT-MD] Unexpected exit, restarting in 3 seconds...");
+                setTimeout(() => {
+                    start();
+                }, 3000);
+            } else if (isRestarting) {
+                // Manual restart - start immediately after proper exit
+                isRestarting = false;
+                console.log("[GIFT-MD] Restarting now...");
+                setTimeout(() => {
+                    start();
+                }, 1000);
+            }
+        });
+
+        botProcess.on('error', (error) => {
+            console.error('[GIFT-MD] Process error:', error);
         });
 
         console.log("[GIFT-MD] started with PID:", botProcess.pid);
     }
 
     global.restart = function () {
-        if (botProcess) {
-            console.log("[GIFT-MD] Restarting...");
-            botProcess.kill();
-            start();
+        if (isRestarting) {
+            console.log("[GIFT-MD] Restart already in progress...");
+            return;
+        }
+
+        isRestarting = true;
+        
+        if (botProcess && !botProcess.killed) {
+            console.log("[GIFT-MD] Gracefully stopping bot...");
+            
+            // Try graceful shutdown first
+            botProcess.kill('SIGTERM');
+            
+            // Force kill after 5 seconds if not stopped
+            setTimeout(() => {
+                if (botProcess && !botProcess.killed) {
+                    console.log("[GIFT-MD] Force killing bot...");
+                    botProcess.kill('SIGKILL');
+                }
+            }, 5000);
+            
         } else {
             console.log("[GIFT-MD] No bot process running. Starting new one...");
+            isRestarting = false;
             start();
         }
     };
 
+    // âœ… Graceful shutdown on process signals
+    process.on('SIGINT', () => {
+        console.log('\n[GIFT-MD] Received SIGINT, shutting down gracefully...');
+        if (botProcess) {
+            botProcess.kill('SIGTERM');
+        }
+        process.exit(0);
+    });
+
+    process.on('SIGTERM', () => {
+        console.log('[GIFT-MD] Received SIGTERM, shutting down gracefully...');
+        if (botProcess) {
+            botProcess.kill('SIGTERM');
+        }
+        process.exit(0);
+    });
+
     start();
     return; // stop here in manager mode
 }
-
 //=========== BOT MODE==========//
 require('./settings')
 const { channelInfo } = require('./lib/messageConfig')
@@ -87,9 +147,9 @@ const { PHONENUMBER_MCC } = require('@whiskeysockets/baileys/lib/Utils/generics'
 const { rmSync, existsSync } = require('fs')
 const { join } = require('path')
 // Create a store object with required methods
-console.log(chalk.cyan('┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓'))
-    console.log(chalk.cyan('┃') + chalk.white.bold('          🤖 GIFT MD BOT STARTING...        ') + chalk.cyan(' ┃'))
-    console.log(chalk.cyan('┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛'))
+console.log(chalk.cyan('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”“'))
+    console.log(chalk.cyan('â”ƒ') + chalk.white.bold('          ðŸ¤– GIFT MD BOT STARTING...        ') + chalk.cyan(' â”ƒ'))
+    console.log(chalk.cyan('â”—â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”›'))
 const store = {
     messages: {},
     contacts: {},
@@ -129,7 +189,7 @@ let phoneNumber = "911234567890"
 let owner = JSON.parse(fs.readFileSync('./data/owner.json'))
 
 global.botname = "KNIGHT BOT"
-global.themeemoji = "•"
+global.themeemoji = "â€¢"
 
 const settings = require('./settings')
 const pairingCode = !!phoneNumber || process.argv.includes("--pairing-code")
@@ -194,7 +254,7 @@ async function startXeonBotInc() {
                 // Only try to send error message if we have a valid chatId
                 if (mek.key && mek.key.remoteJid) {
                     await XeonBotInc.sendMessage(mek.key.remoteJid, { 
-                        text: '❌ An error occurred while processing your message.',
+                        text: 'âŒ An error occurred while processing your message.',
                     ...channelInfo 
                     }).catch(console.error);
                 }
@@ -250,7 +310,7 @@ async function startXeonBotInc() {
         if (!!global.phoneNumber) {
             phoneNumber = global.phoneNumber
         } else {
-            phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFormat: 6281376552730 (without + or spaces) : `)))
+            phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number ðŸ˜\nFormat: 6281376552730 (without + or spaces) : `)))
         }
 
         // Clean the phone number - remove any non-digit characters
@@ -269,24 +329,24 @@ async function startXeonBotInc() {
                     code = code?.match(/.{1,4}/g)?.join("-") || code
 
                     console.log('')
-                    console.log(chalk.green('┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓'))
-                    console.log(chalk.green('┃') + chalk.white.bold('              PAIRING CODE               ') + chalk.green('┃'))
-                    console.log(chalk.green('┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛'))
+                    console.log(chalk.green('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”“'))
+                    console.log(chalk.green('â”ƒ') + chalk.white.bold('              PAIRING CODE               ') + chalk.green('â”ƒ'))
+                    console.log(chalk.green('â”—â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”›'))
                     console.log('')
                     console.log(chalk.cyan.bold(`    ${code}    `))
                     console.log('')
-                    console.log(chalk.yellow('📱 How to link your WhatsApp:'))
+                    console.log(chalk.yellow('ðŸ“± How to link your WhatsApp:'))
                     console.log(chalk.white('1. Open WhatsApp on your phone'))
                     console.log(chalk.white('2. Go to Settings > Linked Devices'))
                     console.log(chalk.white('3. Tap "Link a Device"'))
                     console.log(chalk.white('4. Enter the code: ') + chalk.green.bold(code))
                     console.log('')
-                    console.log(chalk.cyan.bold('⏱️  Code expires in 1 minute'))
+                    console.log(chalk.cyan.bold('â±ï¸  Code expires in 1 minute'))
                     console.log('')
 
                 } catch (error) {
                     console.error('')
-                    console.log(chalk.red('❌ Failed to generate pairing code'))
+                    console.log(chalk.red('âŒ Failed to generate pairing code'))
                     console.log(chalk.yellow('Error details:'), error.message)
                     console.log(chalk.gray('Please check your internet connection and try again'))
                     process.exit(1)
@@ -298,9 +358,9 @@ async function startXeonBotInc() {
     XeonBotInc.ev.on('connection.update', async (s) => {
         const { connection, lastDisconnect } = s
         if (connection == "open") {
-            console.log(chalk.green('┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓'))
-                console.log(chalk.green('┃') + chalk.white.bold('          ✅ CONNECTION SUCCESSFUL!        ') + chalk.green('┃'))
-                console.log(chalk.green('┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛'))
+            console.log(chalk.green('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”“'))
+                console.log(chalk.green('â”ƒ') + chalk.white.bold('          âœ… CONNECTION SUCCESSFUL!        ') + chalk.green('â”ƒ'))
+                console.log(chalk.green('â”—â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”›'))
                 console.log('') 
                 
     // Try to extract lid number from the lid property
@@ -309,28 +369,28 @@ async function startXeonBotInc() {
 
         global.ownerLid = XeonBotInc.user.lid.split(':')[0]; // Get number before ':'
 
-        console.log(chalk.cyan(`🆔 Owner LID captured: ${global.ownerLid}`));
+        console.log(chalk.cyan(`ðŸ†” Owner LID captured: ${global.ownerLid}`));
 
     }
       
-            global.sock = XeonBotInc; // ✅ Make socket available globally for autobio & other features
+            global.sock = XeonBotInc; // âœ… Make socket available globally for autobio & other features
             const botNumber = XeonBotInc.user.id.split(':')[0] + '@s.whatsapp.net';
             await XeonBotInc.sendMessage(botNumber, { 
-                text: `🤖 Bot Connected Successfully!\n\n⏰ Time: ${new Date().toLocaleString()}\n✅ Status: Online and Ready!\nCurrent prefix is: ${currentPrefix}
-                \n✅Make sure to join below channel`,
+                text: `ðŸ¤– Bot Connected Successfully!\n\nâ° Time: ${new Date().toLocaleString()}\nâœ… Status: Online and Ready!\nCurrent prefix is: ${currentPrefix}
+                \nâœ…Make sure to join below channel`,
                 ...channelInfo
             });
 
             await delay(1999)
-                console.log(chalk.cyan('┌──────────────────────────────────────────────┐'))
-                console.log(chalk.cyan('│')+ chalk.bold.blue('                 │ GIFT-MD │'))
-                console.log(chalk.cyan('├──────────────────────────────────────────────┘'))
-                console.log(chalk.cyan('│ ') + chalk.white('• Bot Status: ') + chalk.green('Connected Successfully ✅') + chalk.cyan('        │'))
-console.log(chalk.cyan('│ ') + chalk.white('• Owner: ') + chalk.yellow(owner) + chalk.cyan('          │'))
-                console.log(chalk.cyan('│ ') + chalk.white('• Phone: ') + chalk.yellow(XeonBotInc.user.id.split(':')[0]) + chalk.cyan('                        │'))
-                console.log(chalk.cyan('│ ') + chalk.white('• Time: ') + chalk.yellow(new Date().toLocaleString()) + chalk.cyan('                 │'))
-                console.log(chalk.cyan('│ ') + chalk.white('• Commands: Send .listcmd to see available CMD') + chalk.cyan('│'))
-                console.log(chalk.cyan('└──────────────────────────────────────────────┘'))
+                console.log(chalk.cyan('â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”'))
+                console.log(chalk.cyan('â”‚')+ chalk.bold.blue('                 â”‚ GIFT-MD â”‚'))
+                console.log(chalk.cyan('â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜'))
+                console.log(chalk.cyan('â”‚ ') + chalk.white('â€¢ Bot Status: ') + chalk.green('Connected Successfully âœ…') + chalk.cyan('        â”‚'))
+console.log(chalk.cyan('â”‚ ') + chalk.white('â€¢ Owner: ') + chalk.yellow(owner) + chalk.cyan('          â”‚'))
+                console.log(chalk.cyan('â”‚ ') + chalk.white('â€¢ Phone: ') + chalk.yellow(XeonBotInc.user.id.split(':')[0]) + chalk.cyan('                        â”‚'))
+                console.log(chalk.cyan('â”‚ ') + chalk.white('â€¢ Time: ') + chalk.yellow(new Date().toLocaleString()) + chalk.cyan('                 â”‚'))
+                console.log(chalk.cyan('â”‚ ') + chalk.white('â€¢ Commands: Send .listcmd to see available CMD') + chalk.cyan('â”‚'))
+                console.log(chalk.cyan('â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜'))
                 console.log('')
 initializeCallHandler(XeonBotInc);            
 restorePresenceSettings(XeonBotInc);
