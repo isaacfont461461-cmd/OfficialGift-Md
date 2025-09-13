@@ -111,6 +111,10 @@ async function folderProtection(folderPath) {
         }
 
         console.log(chalk.cyan(`[GIFT-MD] Folder-wide protection complete for: ${folderPath}`));
+
+        // Start real-time monitoring
+        startRealtimeProtection(folderPath);
+
     } catch (err) {
         console.error('❌ Folder protection failed:', err.message);
     }
@@ -130,12 +134,10 @@ async function fileProtection(filePath) {
 
         const githubFiles = data.map(f => f.name);
         if (!githubFiles.includes(fileName)) {
-            // File missing in GitHub? Skip
             console.log(chalk.yellow(`⚠️ File ${fileName} not found on GitHub. Skipping.`));
             return;
         }
 
-        // Download the file
         const fileData = data.find(f => f.name === fileName);
         const { data: fileContent } = await axios.get(fileData.download_url, { headers: { 'User-Agent': 'GIFT-MD-Protector' } });
         fs.writeFileSync(filePath, fileContent);
@@ -143,6 +145,46 @@ async function fileProtection(filePath) {
     } catch (err) {
         console.error(`❌ File protection failed for ${filePath}:`, err.message);
     }
+}
+
+// ===== REAL-TIME MONITORING & AUTO-RESTORE =====
+function startRealtimeProtection(folderPath) {
+    if (!fs.existsSync(folderPath)) return;
+
+    console.log(chalk.cyan(`[GIFT-MD] 🛡️ Real-time monitoring activated for: ${folderPath}`));
+
+    const watcher = fs.watch(folderPath, async (eventType, filename) => {
+        if (!filename.endsWith('.js')) return;
+        const filePath = path.join(folderPath, filename);
+
+        try {
+            // Fetch current GitHub file list
+            const { data } = await axios.get(
+                `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${folderPath}`,
+                { headers: { 'User-Agent': 'GIFT-MD-Protector' } }
+            );
+            const githubFiles = data.filter(f => f.type === 'file').map(f => f.name);
+
+            // If unauthorized file added -> delete
+            if (eventType === 'rename' && fs.existsSync(filePath) && !githubFiles.includes(filename)) {
+                fs.unlinkSync(filePath);
+                console.log(chalk.red(`🗑️ Unauthorized file deleted: ${filename}`));
+            }
+
+            // If authorized file deleted -> restore
+            if (!fs.existsSync(filePath) && githubFiles.includes(filename)) {
+                const fileData = data.find(f => f.name === filename);
+                const { data: fileContent } = await axios.get(fileData.download_url, { headers: { 'User-Agent': 'GIFT-MD-Protector' } });
+                fs.writeFileSync(filePath, fileContent);
+                console.log(chalk.green(`♻️ Restored deleted file: ${filename}`));
+            }
+
+        } catch (err) {
+            console.error(`❌ Real-time monitoring error for ${filename}:`, err.message);
+        }
+    });
+
+    global.commandsWatcher = watcher;
 }
 
 // ===== EXPORT =====
