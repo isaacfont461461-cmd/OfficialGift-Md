@@ -1,4 +1,4 @@
-// commands/owner/restart.js
+// commands/owner/restart.j
 const fs = require('fs');
 const path = require('path');
 
