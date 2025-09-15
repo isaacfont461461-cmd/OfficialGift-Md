@@ -1,3 +1,4 @@
+//I'm coked 😭
 const fs = require('fs');
 const db = require('../lib/database');
 const { syncMode } = require('./topmembers');
