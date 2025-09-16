@@ -97,7 +97,8 @@ async function createEmojiImage(emoji) {
 }
 
 const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
-const { db,getSetting, updateSetting } = require('../lib/database');
+const { getSetting, updateSetting } = require('../lib/database');
+const db = require('../lib/database');
 const fs = require('fs');
 const axios = require('axios');
 const { channelInfo } = require('../lib/messageConfig');
