@@ -101,6 +101,9 @@ const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
 const { getSetting, updateSetting } = require('../lib/database');
 const db = require('../lib/database');
 const fs = require('fs');
+const { getChatData, updateChatData, getCommandData, updateCommandData } = require('../lib/database');
+
+const { requireAdmin } = require('../lib/adminCheck');
 const axios = require('axios');
 const { channelInfo } = require('../lib/messageConfig');
 const sharp = require('sharp');
@@ -1474,6 +1477,1144 @@ Current setting: Use this command to check`);
                 await reply(`❌ Failed to update group add privacy!\n\nError: ${error.message}`);
             }
         }
+    },
+
+    {
+
+    name: 'antilink',
+
+    description: 'Advanced antilink system with customizable actions',
+
+    usage: 'antilink [on/off/kick/warn/delete/set/status]',
+
+    category: 'admin',
+
+    adminOnly: true,
+
+    groupOnly: true,
+
+    async execute(sock, message, args, context) {
+
+        const { chatId, reply, isGroup, isSenderAdmin, isBotAdmin, senderIsSudo, cleanSender, userMessage } = context;
+
+        if (!isGroup) {
+
+            return await reply('❌ This command can only be used in groups!');
+
+        }
+
+        if (!await requireAdmin(context)) return;
+
+        if (!isBotAdmin) {
+
+            return await reply('❌ Please make me an admin to use antilink features!');
+
+        }
+
+        const subCommand = args[1]?.toLowerCase();
+
+        
+
+        if (!subCommand) {
+
+            return await reply(`🔗 Antilink Commands
+
+🔹 \`.antilink on\` - Enable basic antilink
+
+🔹 \`.antilink off\` - Disable antilink  
+
+🔹 \`.antilink kick\` - Kick users for links
+
+🔹 \`.antilink warn [limit]\` - Warning system
+
+🔹 \`.antilink delete\` - Only delete messages
+
+🔹 \`.antilink set message <text>\` - Custom message
+
+🔹 \`.antilink set allow <domain>\` - Allow domain
+
+🔹 \`.antilink status\` - Show current settings
+
+📌 Examples:
+
+• \`.antilink warn 5\` - 5 warnings before kick
+
+• \`.antilink set allow youtube.com\` - Allow YouTube`);
+
+        }
+
+        // Get current settings
+
+        const currentSettings = getCommandData('antilink', chatId, {
+
+            enabled: false,
+
+            action: 'delete',
+
+            warnLimit: 3,
+
+            customMessage: '🚫 Link detected and deleted!',
+
+            allowedDomains: [],
+
+            warnings: {}
+
+        });
+
+        switch (subCommand) {
+
+            case 'on':
+
+                currentSettings.enabled = true;
+
+                currentSettings.action = 'delete';
+
+                updateCommandData('antilink', chatId, currentSettings);
+
+                
+
+                // Start monitoring messages in this chat
+
+                this.startMonitoring(sock, chatId);
+
+                await reply('✅ Antilink enabled! Links will be deleted.');
+
+                break;
+
+            case 'off':
+
+                currentSettings.enabled = false;
+
+                updateCommandData('antilink', chatId, currentSettings);
+
+                await reply('❌ Antilink disabled!');
+
+                break;
+
+            case 'kick':
+
+                currentSettings.enabled = true;
+
+                currentSettings.action = 'kick';
+
+                updateCommandData('antilink', chatId, currentSettings);
+
+                
+
+                this.startMonitoring(sock, chatId);
+
+                await reply('⚡ Antilink set to KICK mode! Users posting links will be kicked.');
+
+                break;
+
+            case 'warn':
+
+                const warnLimit = parseInt(args[2]) || 3;
+
+                if (warnLimit < 1 || warnLimit > 10) {
+
+                    return await reply('❌ Warning limit must be between 1-10!');
+
+                }
+
+                currentSettings.enabled = true;
+
+                currentSettings.action = 'warn';
+
+                currentSettings.warnLimit = warnLimit;
+
+                currentSettings.warnings = {}; // Reset warnings
+
+                updateCommandData('antilink', chatId, currentSettings);
+
+                
+
+                this.startMonitoring(sock, chatId);
+
+                await reply(`⚠️ Antilink set to WARNING mode! Users will be kicked after ${warnLimit} warnings.`);
+
+                break;
+
+            case 'delete':
+
+                currentSettings.enabled = true;
+
+                currentSettings.action = 'delete';
+
+                updateCommandData('antilink', chatId, currentSettings);
+
+                
+
+                this.startMonitoring(sock, chatId);
+
+                await reply('🗑️ Antilink set to DELETE mode! Only messages will be deleted.');
+
+                break;
+
+            case 'set':
+
+                const setType = args[2]?.toLowerCase();
+
+                
+
+                if (setType === 'message') {
+
+                    const customMessage = args.slice(3).join(' ');
+
+                    if (!customMessage) {
+
+                        return await reply('❌ Please provide a custom message!\n\nExample: `.antilink set message No links allowed here!`');
+
+                    }
+
+                    currentSettings.customMessage = customMessage;
+
+                    updateCommandData('antilink', chatId, currentSettings);
+
+                    await reply(`✅ Custom message set to: "${customMessage}"`);
+
+                    
+
+                } else if (setType === 'allow') {
+
+                    const domain = args[3]?.toLowerCase();
+
+                    if (!domain) {
+
+                        return await reply('❌ Please specify a domain to allow!\n\nExample: `.antilink set allow youtube.com`');
+
+                    }
+
+                    
+
+                    // Remove protocol if present
+
+                    const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '');
+
+                    
+
+                    if (!currentSettings.allowedDomains.includes(cleanDomain)) {
+
+                        currentSettings.allowedDomains.push(cleanDomain);
+
+                        updateCommandData('antilink', chatId, currentSettings);
+
+                        await reply(`✅ Domain "${cleanDomain}" added to allowed list!`);
+
+                    } else {
+
+                        await reply(`⚠️ Domain "${cleanDomain}" is already in allowed list!`);
+
+                    }
+
+                    
+
+                } else {
+
+                    await reply('❌ Invalid set option!\n\nUse: `.antilink set message <text>` or `.antilink set allow <domain>`');
+
+                }
+
+                break;
+
+            case 'status':
+
+                const status = currentSettings.enabled ? '🟢 Enabled' : '🔴 Disabled';
+
+                const actionEmoji = {
+
+                    'delete': '🗑️',
+
+                    'kick': '⚡',
+
+                    'warn': '⚠️'
+
+                };
+
+                
+
+                let statusMsg = `🔗 Antilink Status
+
+Status: ${status}
+
+Action: ${actionEmoji[currentSettings.action]} ${currentSettings.action.toUpperCase()}`;
+
+                if (currentSettings.action === 'warn') {
+
+                    statusMsg += `
+Warning Limit: ${currentSettings.warnLimit}`;
+
+                }
+
+                statusMsg += `
+
+Custom Message: ${currentSettings.customMessage}`;
+
+                if (currentSettings.allowedDomains.length > 0) {
+
+                    statusMsg += `
+
+Allowed Domains: ${currentSettings.allowedDomains.join(', ')}`;
+
+                }
+
+                // Show warning counts if any
+
+                const warningCount = Object.keys(currentSettings.warnings).length;
+
+                if (warningCount > 0) {
+
+                    statusMsg += `
+
+Users with Warnings: ${warningCount}`;
+
+                }
+
+                await reply(statusMsg);
+
+                break;
+
+            case 'reset':
+
+                currentSettings.warnings = {};
+
+                updateCommandData('antilink', chatId, currentSettings);
+
+                await reply('🔄 All warnings have been reset!');
+
+                break;
+
+            case 'remove':
+
+                const removeType = args[2]?.toLowerCase();
+
+                if (removeType === 'allow') {
+
+                    const domainToRemove = args[3]?.toLowerCase();
+
+                    if (!domainToRemove) {
+
+                        return await reply('❌ Please specify a domain to remove!\n\nExample: `.antilink remove allow youtube.com`');
+
+                    }
+
+                    
+
+                    const cleanDomain = domainToRemove.replace(/^https?:\/\//, '').replace(/^www\./, '');
+
+                    const index = currentSettings.allowedDomains.indexOf(cleanDomain);
+
+                    
+
+                    if (index > -1) {
+
+                        currentSettings.allowedDomains.splice(index, 1);
+
+                        updateCommandData('antilink', chatId, currentSettings);
+
+                        await reply(`✅ Domain "${cleanDomain}" removed from allowed list!`);
+
+                    } else {
+
+                        await reply(`❌ Domain "${cleanDomain}" not found in allowed list!`);
+
+                    }
+
+                } else {
+
+                    await reply('❌ Invalid remove option!\n\nUse: `.antilink remove allow <domain>`');
+
+                }
+
+                break;
+
+            default:
+
+                await reply('❌ Invalid antilink command!\n\nUse `.antilink` to see all available options.');
+
+        }
+
+    },
+
+    // Internal monitoring function
+
+    startMonitoring(sock, chatId) {
+
+        // This function sets up monitoring but the actual checking happens in checkMessage
+       
+    },
+
+    // Main link checking function - called from main.js
+
+    async checkMessage(sock, message, context) {
+
+        try {
+
+            const { chatId, userMessage, isGroup, isSenderAdmin, senderIsSudo, cleanSender } = context;
+
+            
+
+            if (!isGroup) return;
+
+            
+
+            // Skip if sender is admin or sudo
+
+            if (isSenderAdmin || senderIsSudo) return;
+
+            
+
+            // Get antilink settings
+
+            const settings = getCommandData('antilink', chatId, {
+
+                enabled: false,
+
+                action: 'delete',
+
+                warnLimit: 3,
+
+                customMessage: '🚫 Link detected and deleted!',
+
+                allowedDomains: [],
+
+                warnings: {}
+
+            });
+
+            
+
+            if (!settings.enabled) return;
+
+            
+
+            // Enhanced link detection patterns
+
+            const linkPatterns = [
+
+                /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi,
+
+                /www\.[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi,
+
+                /[-a-zA-Z0-9@:%._\+~#=]{1,256}\.(com|org|net|edu|gov|mil|int|co|io|me|tv|app|dev|tech|online|site|info|biz|name|mobi|pro|aero|museum|jobs|travel|tel|cat|asia|xxx|post|geo|local|arpa)\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi,
+
+                /chat\.whatsapp\.com\/[a-zA-Z0-9]{20,}/gi,
+
+                /(t\.me|telegram\.me)\/[a-zA-Z0-9_]+/gi,
+
+                /discord\.gg\/[a-zA-Z0-9]+/gi,
+
+                /(youtube\.com|youtu\.be)\/[a-zA-Z0-9_\-\?=&]+/gi
+
+            ];
+
+            
+
+            const foundLinks = [];
+
+            linkPatterns.forEach(pattern => {
+
+                const matches = userMessage.match(pattern);
+
+                if (matches) foundLinks.push(...matches);
+
+            });
+
+            
+
+            if (foundLinks.length > 0) {
+
+                // Check if any links are from allowed domains
+
+                const isAllowed = foundLinks.some(link => {
+
+                    return settings.allowedDomains.some(allowed => {
+
+                        const cleanLink = link.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '');
+
+                        return cleanLink.includes(allowed.toLowerCase());
+
+                    });
+
+                });
+
+                
+
+                if (!isAllowed) {
+
+                    console.log(`🔗 Link detected from ${cleanSender}: ${foundLinks[0]}`);
+
+                    
+
+                    // Delete the message first
+
+                    try {
+
+                        await sock.sendMessage(chatId, { delete: message.key });
+
+                    } catch (error) {
+
+                        console.error('❌ Failed to delete message:', error);
+
+                    }
+
+                    
+
+                    // Handle different actions
+
+                    if (settings.action === 'delete') {
+
+                        await context.reply(settings.customMessage);
+
+                        
+
+                    } else if (settings.action === 'kick') {
+
+                        try {
+
+                            await sock.groupParticipantsUpdate(chatId, [cleanSender], 'remove');
+
+                            await context.reply(`${settings.customMessage}\n\n⚡ User has been kicked for posting links!`);
+
+                        } catch (error) {
+
+                            console.error('❌ Failed to kick user:', error);
+
+                            await context.reply(settings.customMessage + '\n\n❌ Failed to kick user - check bot permissions!');
+
+                        }
+
+                        
+
+                    } else if (settings.action === 'warn') {
+
+                        // Initialize warnings for user if not exists
+
+                        if (!settings.warnings[cleanSender]) {
+
+                            settings.warnings[cleanSender] = 0;
+
+                        }
+
+                        
+
+                        settings.warnings[cleanSender]++;
+
+                        const currentWarnings = settings.warnings[cleanSender];
+
+                        
+
+                        if (currentWarnings >= settings.warnLimit) {
+
+                            // Kick user
+
+                            try {
+
+                                await sock.groupParticipantsUpdate(chatId, [cleanSender], 'remove');
+
+                                await context.reply(`${settings.customMessage}\n\n⚡ User kicked after ${currentWarnings} warnings!`);
+
+                                
+
+                                // Reset warnings for this user
+
+                                delete settings.warnings[cleanSender];
+
+                            } catch (error) {
+
+                                console.error('❌ Failed to kick user:', error);
+
+                                await context.reply(`${settings.customMessage}\n\n❌ Warning ${currentWarnings}/${settings.warnLimit} - Failed to kick!`);
+
+                            }
+
+                        } else {
+
+                            await context.reply(`${settings.customMessage}\n\n⚠️ Warning ${currentWarnings}/${settings.warnLimit} - Next violation will result in kick!`);
+
+                        }
+
+                        
+
+                        // Save updated warnings
+
+                        updateCommandData('antilink', chatId, settings);
+
+                    }
+
+                }
+
+            }
+
+            
+
+        } catch (error) {
+
+            console.error('❌ Error in antilink check:', error);
+
+        }
+
     }
+
+},
+  {
+
+    name: 'antibadword',
+
+    description: 'Advanced anti-badword system with customizable actions',
+
+    usage: 'antibadword [on/off/kick/warn/delete/set/status]',
+
+    category: 'admin',
+
+    adminOnly: true,
+
+    groupOnly: true,
+
+    async execute(sock, message, args, context) {
+
+        const { chatId, reply, isGroup, isSenderAdmin, isBotAdmin, senderIsSudo, cleanSender, userMessage } = context;
+
+        if (!isGroup) {
+
+            return await reply('❌ This command can only be used in groups!');
+
+        }
+
+        if (!await requireAdmin(context)) return;
+
+        if (!isBotAdmin) {
+
+            return await reply('❌ Please make me an admin to use anti-badword features!');
+
+        }
+
+        const subCommand = args[1]?.toLowerCase();
+
+        
+
+        if (!subCommand) {
+
+            return await reply(`🤬 Anti-Badword Commands
+
+🔹 \`.antibadword on\` - Enable basic anti-badword
+
+🔹 \`.antibadword off\` - Disable anti-badword  
+
+🔹 \`.antibadword kick\` - Kick users for bad words
+
+🔹 \`.antibadword warn [limit]\` - Warning system
+
+🔹 \`.antibadword delete\` - Only delete messages
+
+🔹 \`.antibadword set message <text>\` - Custom message
+
+🔹 \`.antibadword set add <word>\` - Add bad word
+
+🔹 \`.antibadword set remove <word>\` - Remove bad word
+
+🔹 \`.antibadword list\` - Show bad words list
+
+🔹 \`.antibadword status\` - Show current settings
+
+📌 Examples:
+
+• \`.antibadword warn 3\` - 3 warnings before kick
+
+• \`.antibadword set add stupid\` - Add "stupid" to bad words`);
+
+        }
+
+        // Get current settings
+
+        const currentSettings = getCommandData('antibadword', chatId, {
+
+            enabled: false,
+
+            action: 'delete',
+
+            warnLimit: 3,
+
+            customMessage: '🤬 Bad word detected and deleted!',
+
+            badWords: [
+
+                'fuck', 'shit', 'bitch', 'asshole', 'damn', 'bastard',
+
+                'motherfucker', 'bullshit', 'crap', 'piss', 'whore',
+
+                'nigga', 'nigger', 'faggot', 'retard', 'slut'
+
+            ],
+
+            warnings: {}
+
+        });
+
+        switch (subCommand) {
+
+            case 'on':
+
+                currentSettings.enabled = true;
+
+                currentSettings.action = 'delete';
+
+                updateCommandData('antibadword', chatId, currentSettings);
+
+                
+
+                this.startMonitoring(sock, chatId);
+
+                await reply('✅ Anti-badword enabled! Bad words will be deleted.');
+
+                break;
+
+            case 'off':
+
+                currentSettings.enabled = false;
+
+                updateCommandData('antibadword', chatId, currentSettings);
+
+                await reply('❌ Anti-badword disabled!');
+
+                break;
+
+            case 'kick':
+
+                currentSettings.enabled = true;
+
+                currentSettings.action = 'kick';
+
+                updateCommandData('antibadword', chatId, currentSettings);
+
+                
+
+                this.startMonitoring(sock, chatId);
+
+                await reply('⚡ Anti-badword set to KICK mode! Users using bad words will be kicked.');
+
+                break;
+
+            case 'warn':
+
+                const warnLimit = parseInt(args[2]) || 3;
+
+                if (warnLimit < 1 || warnLimit > 10) {
+
+                    return await reply('❌ Warning limit must be between 1-10!');
+
+                }
+
+                currentSettings.enabled = true;
+
+                currentSettings.action = 'warn';
+
+                currentSettings.warnLimit = warnLimit;
+
+                currentSettings.warnings = {}; // Reset warnings
+
+                updateCommandData('antibadword', chatId, currentSettings);
+
+                
+
+                this.startMonitoring(sock, chatId);
+
+                await reply(`⚠️ Anti-badword set to WARNING mode! Users will be kicked after ${warnLimit} warnings.`);
+
+                break;
+
+            case 'delete':
+
+                currentSettings.enabled = true;
+
+                currentSettings.action = 'delete';
+
+                updateCommandData('antibadword', chatId, currentSettings);
+
+                
+
+                this.startMonitoring(sock, chatId);
+
+                await reply('🗑️ Anti-badword set to DELETE mode! Only messages will be deleted.');
+
+                break;
+
+            case 'set':
+
+                const setType = args[2]?.toLowerCase();
+
+                
+
+                if (setType === 'message') {
+
+                    const customMessage = args.slice(3).join(' ');
+
+                    if (!customMessage) {
+
+                        return await reply('❌ Please provide a custom message!\n\nExample: `.antibadword set message Keep it clean!`');
+
+                    }
+
+                    currentSettings.customMessage = customMessage;
+
+                    updateCommandData('antibadword', chatId, currentSettings);
+
+                    await reply(`✅ Custom message set to: "${customMessage}"`);
+
+                    
+
+                } else if (setType === 'add') {
+
+                    const newWord = args[3]?.toLowerCase();
+
+                    if (!newWord) {
+
+                        return await reply('❌ Please specify a word to add!\n\nExample: `.antibadword set add stupid`');
+
+                    }
+
+                    
+
+                    if (!currentSettings.badWords.includes(newWord)) {
+
+                        currentSettings.badWords.push(newWord);
+
+                        updateCommandData('antibadword', chatId, currentSettings);
+
+                        await reply(`✅ Word "${newWord}" added to bad words list!`);
+
+                    } else {
+
+                        await reply(`⚠️ Word "${newWord}" is already in the bad words list!`);
+
+                    }
+
+                    
+
+                } else if (setType === 'remove') {
+
+                    const wordToRemove = args[3]?.toLowerCase();
+
+                    if (!wordToRemove) {
+
+                        return await reply('❌ Please specify a word to remove!\n\nExample: `.antibadword set remove damn`');
+
+                    }
+
+                    
+
+                    const index = currentSettings.badWords.indexOf(wordToRemove);
+
+                    if (index > -1) {
+
+                        currentSettings.badWords.splice(index, 1);
+
+                        updateCommandData('antibadword', chatId, currentSettings);
+
+                        await reply(`✅ Word "${wordToRemove}" removed from bad words list!`);
+
+                    } else {
+
+                        await reply(`❌ Word "${wordToRemove}" not found in bad words list!`);
+
+                    }
+
+                    
+
+                } else {
+
+                    await reply('❌ Invalid set option!\n\nUse: `.antibadword set message <text>`, `.antibadword set add <word>`, or `.antibadword set remove <word>`');
+
+                }
+
+                break;
+
+            case 'list':
+
+                if (currentSettings.badWords.length === 0) {
+
+                    await reply('📝 No bad words in the list!');
+
+                } else {
+
+                    const wordsList = currentSettings.badWords.map((word, index) => `${index + 1}. ${word}`).join('\n');
+
+                    await reply(`📝 Bad Words List (${currentSettings.badWords.length})\n\n${wordsList}`);
+
+                }
+
+                break;
+
+            case 'status':
+
+                const status = currentSettings.enabled ? '🟢 Enabled' : '🔴 Disabled';
+
+                const actionEmoji = {
+
+                    'delete': '🗑️',
+
+                    'kick': '⚡',
+
+                    'warn': '⚠️'
+
+                };
+
+                
+
+                let statusMsg = `🤬 Anti-Badword Status
+
+Status: ${status}
+
+Action: ${actionEmoji[currentSettings.action]} ${currentSettings.action.toUpperCase()}`;
+
+                if (currentSettings.action === 'warn') {
+
+                    statusMsg += `
+
+Warning Limit: ${currentSettings.warnLimit}`;
+
+                }
+
+                statusMsg += `
+
+Custom Message: ${currentSettings.customMessage}
+
+Bad Words Count: ${currentSettings.badWords.length}`;
+
+                // Show warning counts if any
+
+                const warningCount = Object.keys(currentSettings.warnings).length;
+
+                if (warningCount > 0) {
+
+                    statusMsg += `
+
+Users with Warnings: ${warningCount}`;
+
+                }
+
+                await reply(statusMsg);
+
+                break;
+
+            case 'reset':
+
+                currentSettings.warnings = {};
+
+                updateCommandData('antibadword', chatId, currentSettings);
+
+                await reply('🔄 All warnings have been reset!');
+
+                break;
+
+            case 'clear':
+
+                currentSettings.badWords = [];
+
+                updateCommandData('antibadword', chatId, currentSettings);
+
+                await reply('🗑️ All bad words have been cleared from the list!');
+
+                break;
+
+            default:
+
+                await reply('❌ Invalid anti-badword command!\n\nUse `.antibadword` to see all available options.');
+
+        }
+
+    },
+
+    // Internal monitoring function
+
+    startMonitoring(sock, chatId) {
+
+        console.log(`🤬 Anti-badword monitoring started for ${chatId}`);
+
+    },
+
+    // Main bad word checking function - called from main.js
+
+    async checkMessage(sock, message, context) {
+
+        try {
+
+            const { chatId, userMessage, isGroup, isSenderAdmin, senderIsSudo, cleanSender } = context;
+
+            
+
+            if (!isGroup) return;
+
+            
+
+            // Skip if sender is admin or sudo
+
+            if (isSenderAdmin || senderIsSudo) return;
+
+            
+
+            // Get anti-badword settings
+
+            const settings = getCommandData('antibadword', chatId, {
+
+                enabled: false,
+
+                action: 'delete',
+
+                warnLimit: 3,
+
+                customMessage: '🤬 Bad word detected and deleted!',
+
+                badWords: [
+
+                    'fuck', 'shit', 'bitch', 'asshole', 'damn', 'bastard',
+
+                    'motherfucker', 'bullshit', 'crap', 'piss', 'whore',
+
+                    'nigga', 'nigger', 'faggot', 'retard', 'slut'
+
+                ],
+
+                warnings: {}
+
+            });
+
+            
+
+            if (!settings.enabled) return;
+
+            
+
+            // Check for bad words (case insensitive)
+
+            const messageText = userMessage.toLowerCase();
+
+            const foundBadWords = settings.badWords.filter(word => {
+
+                // Use word boundaries to match whole words
+
+                const regex = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+
+                return regex.test(messageText);
+
+            });
+
+            
+
+            if (foundBadWords.length > 0) {
+
+                console.log(`🤬 Bad word detected from ${cleanSender}: ${foundBadWords[0]}`);
+
+                
+
+                // Delete the message first
+
+                try {
+
+                    await sock.sendMessage(chatId, { delete: message.key });
+
+                } catch (error) {
+
+                    console.error('❌ Failed to delete message:', error);
+
+                }
+
+                
+
+                // Handle different actions
+
+                if (settings.action === 'delete') {
+
+                    await context.reply(settings.customMessage);
+
+                    
+
+                } else if (settings.action === 'kick') {
+
+                    try {
+
+                        await sock.groupParticipantsUpdate(chatId, [cleanSender], 'remove');
+
+                        await context.reply(`${settings.customMessage}\n\n⚡ User has been kicked for using inappropriate language!`);
+
+                    } catch (error) {
+
+                        console.error('❌ Failed to kick user:', error);
+
+                        await context.reply(settings.customMessage + '\n\n❌ Failed to kick user - check bot permissions!');
+
+                    }
+
+                    
+
+                } else if (settings.action === 'warn') {
+
+                    // Initialize warnings for user if not exists
+
+                    if (!settings.warnings[cleanSender]) {
+
+                        settings.warnings[cleanSender] = 0;
+
+                    }
+
+                    
+
+                    settings.warnings[cleanSender]++;
+
+                    const currentWarnings = settings.warnings[cleanSender];
+
+                    
+
+                    if (currentWarnings >= settings.warnLimit) {
+
+                        // Kick user
+
+                        try {
+
+                            await sock.groupParticipantsUpdate(chatId, [cleanSender], 'remove');
+
+                            await context.reply(`${settings.customMessage}\n\n⚡ User kicked after ${currentWarnings} warnings for inappropriate language!`);
+
+                            
+
+                            // Reset warnings for this user
+
+                            delete settings.warnings[cleanSender];
+
+                        } catch (error) {
+
+                            console.error('❌ Failed to kick user:', error);
+
+                            await context.reply(`${settings.customMessage}\n\n❌ Warning ${currentWarnings}/${settings.warnLimit} - Failed to kick!`);
+
+                        }
+
+                    } else {
+
+                        await context.reply(`${settings.customMessage}\n\n⚠️ Warning ${currentWarnings}/${settings.warnLimit} - Keep it clean or face consequences!`);
+
+                    }
+
+                    
+
+                    // Save updated warnings
+
+                    updateCommandData('antibadword', chatId, settings);
+
+                }
+
+            }
+
+            
+
+        } catch (error) {
+
+            console.error('❌ Error in anti-badword check:', error);
+
+        }
+
+    }
+
+}
 
 ];
