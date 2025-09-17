@@ -261,22 +261,19 @@ try {
         senderId.includes(global.ownerLid)
     );
     
-    if (!data.isPublic && !message.key.fromMe && !contextSenderIsSudo && !isChannel) {
-    
-    return;
-}
+    // ✅ FIXED: Allow owner/sudo to use commands even in private mode
+    if (!data.isPublic && !message.key.fromMe && !contextSenderIsSudo) {
+        
+        return;
+    }
     
     if (isOwnerInChannel) {
         
     }
     
 } catch (error) {
-    
+    console.log('📊 messageCount.json not found, assuming public mode');
 }
-
-        
-    
-
         // COMMAND HANDLER EXECUTION
         try {
             const args = userMessage.slice(currentPrefix.length).split(' ');
