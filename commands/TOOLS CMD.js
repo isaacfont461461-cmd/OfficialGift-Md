@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const settings = require('../settings');
 const { channelInfo } = require('../lib/messageConfig');
  const { handleMediaUpload } = require('../lib/catbox');
-const {downloadContentFromMessage, downloadMediaMessage } = require('@whiskeysockets/baileys');
+const { downloadContentFromMessage, downloadMediaMessage } = require('@whiskeysockets/baileys');
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
@@ -1215,7 +1215,222 @@ END:VCARD
                 await context.reply('❌ Error while creating PDF!');
             }
         }
+    },
+ {
+    name: 'creategc',
+    aliases: ['creategroup', 'newgroup'],
+    description: 'Create WhatsApp group with optional members',
+    usage: 'creategc <name> [numbers] or reply to VCF',
+    category: 'utility',
+    
+    async execute(sock, message, args, context) {
+        const { reply, senderIsSudo, isFromOwner } = context;
+
+        // Check if user has permission (you can adjust this)
+        if (!isFromOwner && !senderIsSudo) {
+            return await reply('❌ Only owner/sudo can create groups!');
+        }
+
+        // Get group name
+        const groupName = args[1];
+        if (!groupName) {
+            return await reply(`📱 Create Group Command
+
+Usage:
+🔹 .creategc <name> - Create empty group
+🔹 .creategc <name> <number1,number2> - Create with members
+🔹 Reply to VCF: .creategc <name> - Add contacts from VCF
+
+Examples:
+• .creategc Isaac - Create group "Isaac"
+• .creategc Isaac 2341234567890,2349876543210 - Create with members
+• Reply to contact file: .creategc Isaac - Add VCF contacts`);
+        }
+
+        try {
+            await context.react('⏳');
+            
+            let participants = [];
+            const quotedMessage = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+            
+            // Method 1: VCF File Processing
+            if (quotedMessage?.documentMessage) {
+                const document = quotedMessage.documentMessage;
+                const fileName = document.fileName || '';
+                
+                if (fileName.endsWith('.vcf') || document.mimetype === 'text/vcard') {
+                    console.log('📇 Processing VCF file...');
+                    
+                    try {
+                        const stream = await downloadContentFromMessage(document, 'document');
+                        let buffer = Buffer.from([]);
+                        
+                        for await (const chunk of stream) {
+                            buffer = Buffer.concat([buffer, chunk]);
+                        }
+                        
+                        const vcfContent = buffer.toString('utf-8');
+                        const extractedNumbers = this.parseVCF(vcfContent);
+                        
+                        if (extractedNumbers.length > 0) {
+                            participants = extractedNumbers;
+                            await reply(`📇 Found ${extractedNumbers.length} contacts in VCF file!`);
+                        } else {
+                            await reply('⚠️ No valid phone numbers found in VCF file.');
+                        }
+                        
+                    } catch (error) {
+                        console.error('❌ VCF processing error:', error);
+                        await reply('❌ Failed to process VCF file. Creating group without members.');
+                    }
+                }
+            }
+            
+            // Method 2: Comma-separated numbers
+            if (participants.length === 0 && args.length > 2) {
+                const numbersString = args.slice(2).join(' ');
+                const rawNumbers = numbersString.split(',').map(num => num.trim());
+                
+                for (const num of rawNumbers) {
+                    const cleanNumber = this.cleanPhoneNumber(num);
+                    if (cleanNumber) {
+                        participants.push(cleanNumber);
+                    }
+                }
+                
+                if (participants.length > 0) {
+                    await reply(`📱 Found ${participants.length} phone numbers!`);
+                }
+            }
+            
+            // Validate participants (check if they're on WhatsApp)
+            const validParticipants = [];
+            if (participants.length > 0) {
+                await reply(`🔍 Validating ${participants.length} phone numbers...`);
+                
+                for (const participant of participants) {
+                    try {
+                        const [result] = await sock.onWhatsApp(participant);
+                        if (result && result.exists) {
+                            validParticipants.push(participant + '@s.whatsapp.net');
+                        }
+                    } catch (error) {
+                        console.log(`❌ Failed to validate ${participant}:`, error.message);
+                    }
+                }
+                
+                await reply(`✅ ${validParticipants.length} valid WhatsApp numbers found!`);
+            }
+            
+            // Create the group
+            console.log(`📱 Creating group "${groupName}" with ${validParticipants.length} members...`);
+            
+            const groupData = await sock.groupCreate(groupName, validParticipants);
+            
+            if (groupData && groupData.id) {
+                await context.react('✅');
+                
+                // Get group invite link
+                let groupLink = '';
+                try {
+                    const inviteCode = await sock.groupInviteCode(groupData.id);
+                    groupLink = `https://chat.whatsapp.com/${inviteCode}`;
+                } catch (error) {
+                    console.error('❌ Failed to get group link:', error);
+                    groupLink = 'Unable to generate link';
+                }
+                
+                let successMsg = `🎉 Group Created Successfully!
+
+📱 Group Name: ${groupName}
+🆔 Group ID: ${groupData.id}
+👥 Members: ${validParticipants.length + 1} (including you)
+🔗 Group Link: ${groupLink}`;
+
+                if (validParticipants.length > 0) {
+                    successMsg += `\n📋 Added Members: ${validParticipants.length}`;
+                }
+                
+                // Send success message to the new group
+                await sock.sendMessage(groupData.id, {
+                    text: `🎉 Welcome to "${groupName}"!
+
+This group was created using Gift MD Bot.
+Group Link: ${groupLink}`
+                });
+                
+                await reply(successMsg);
+                
+            } else {
+                throw new Error('Group creation returned invalid data');
+            }
+            
+        } catch (error) {
+            await context.react('❌');
+            console.error('❌ Group creation error:', error);
+            
+            let errorMsg = '❌ Failed to create group!';
+            
+            if (error.message.includes('not-authorized')) {
+                errorMsg += '\n\n⚠️ Bot may not have permission to create groups.';
+            } else if (error.message.includes('rate-limit')) {
+                errorMsg += '\n\n⏰ Rate limited. Please wait before creating another group.';
+            } else {
+                errorMsg += `\n\n🔍 Error: ${error.message}`;
+            }
+            
+            await reply(errorMsg);
+        }
+    },
+
+    // Helper function to parse VCF content
+    parseVCF(vcfContent) {
+        const phoneNumbers = [];
+        const lines = vcfContent.split('\n');
+        
+        for (const line of lines) {
+            // Look for phone number lines (TEL: or similar)
+            if (line.startsWith('TEL') || line.includes('TEL:')) {
+                const phoneMatch = line.match(/[\+]?[\d\s\-\(\)]+/);
+                if (phoneMatch) {
+                    const cleanNumber = this.cleanPhoneNumber(phoneMatch[0]);
+                    if (cleanNumber && !phoneNumbers.includes(cleanNumber)) {
+                        phoneNumbers.push(cleanNumber);
+                    }
+                }
+            }
+        }
+        
+        return phoneNumbers;
+    },
+
+    // Helper function to clean and validate phone numbers
+    cleanPhoneNumber(phoneNumber) {
+        if (!phoneNumber) return null;
+        
+        // Remove all non-digit characters except +
+        let cleaned = phoneNumber.replace(/[^\d+]/g, '');
+        
+        // Remove leading + if present
+        if (cleaned.startsWith('+')) {
+            cleaned = cleaned.substring(1);
+        }
+        
+        // Must be between 10-15 digits
+        if (cleaned.length < 10 || cleaned.length > 15) {
+            return null;
+        }
+        
+        // If doesn't start with country code, assume it's Nigerian (234)
+        if (cleaned.length === 11 && cleaned.startsWith('0')) {
+            cleaned = '234' + cleaned.substring(1);
+        } else if (cleaned.length === 10) {
+            cleaned = '234' + cleaned;
+        }
+        
+        return cleaned;
     }
+}
 
 
 
