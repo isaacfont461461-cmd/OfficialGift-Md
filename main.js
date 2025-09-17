@@ -35,31 +35,43 @@ global.author = "ISAAC-FAVOUR"
 global.channelLink = "https://whatsapp.com/channel/0029Va90zAnIHphOuO8Msp3A";
 global.ytch = "Mr Unique Hacker";
 
-// Restore presence settings on startup
+// Restore presence settings on startup - FIXED
 const restorePresenceSettings = async (sock) => {
     try {
-        const alwaysOnline = db.getSetting('alwaysOnline', false);
-        const alwaysOffline = db.getSetting('alwaysOffline', false);
+        const alwaysOnline = getSetting('alwaysOnline', false);
+        const alwaysOffline = getSetting('alwaysOffline', false);
         
         if (alwaysOnline && !alwaysOffline) {
+            // Start always online
+            if (global.onlineInterval) {
+                clearInterval(global.onlineInterval);
+            }
+            
+            sock.sendPresenceUpdate('available').catch(console.error);
+            
             global.onlineInterval = setInterval(async () => {
                 try {
                     await sock.sendPresenceUpdate('available');
                     
                 } catch (error) {
-                    console.error('❌ Error updating presence:', error);
+                    console.error('❌ Error updating online presence:', error);
                 }
-            }, 30000);
-            
-            
+            }, 30000);           
             
         } else if (alwaysOffline) {
+            // Start always offline
+            if (global.offlineInterval) {
+                clearInterval(global.offlineInterval);
+            }
+            
+            sock.sendPresenceUpdate('unavailable').catch(console.error);
+            
             global.offlineInterval = setInterval(async () => {
                 try {
                     await sock.sendPresenceUpdate('unavailable');
-                    
+   
                 } catch (error) {
-                    console.error('❌ Error updating presence:', error);
+                    console.error('❌ Error updating offline presence:', error);
                 }
             }, 10000);
             
@@ -70,7 +82,6 @@ const restorePresenceSettings = async (sock) => {
         console.error('❌ Error restoring presence settings:', error);
     }
 };
-
 
 async function handleMessages(sock, messageUpdate, printLog) {
     try {
