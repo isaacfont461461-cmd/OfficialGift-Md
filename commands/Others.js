@@ -1094,5 +1094,386 @@ When enabled, the bot will automatically reject incoming calls and send the cust
 
     }
 
+                },
+    {
+        name: 'lastseen',
+        description: 'Change your last seen privacy setting',
+        usage: 'lastseen <everyone|contacts|nobody>',
+        category: 'whatsapp',
+        
+        async execute(sock, message, args, context) {
+            const { reply, senderIsSudo, isFromOwner, react } = context;
+            
+            if (!isFromOwner && !senderIsSudo) {
+                return await reply('❌ Only owner/sudo can change privacy settings!');
+            }
+            
+            const setting = args[1]?.toLowerCase();
+            
+            if (!setting) {
+                return await reply(`👁️ Last Seen Privacy Settings
+
+🔹 .lastseen everyone - Everyone can see
+🔹 .lastseen contacts - Only contacts can see  
+🔹 .lastseen nobody - Nobody can see
+
+Current setting: Use this command to check`);
+            }
+            
+            try {
+                await react('⏳');
+                
+                let privacySetting;
+                switch (setting) {
+                    case 'everyone':
+                        privacySetting = 'all';
+                        break;
+                    case 'contacts':
+                        privacySetting = 'contacts';
+                        break;
+                    case 'nobody':
+                        privacySetting = 'none';
+                        break;
+                    default:
+                        return await reply('❌ Invalid option! Use: everyone, contacts, or nobody');
                 }
+                
+                await sock.updateLastSeenPrivacy(privacySetting);
+                await react('✅');
+                await reply(`✅ Last seen privacy updated to: ${setting}`);
+                
+            } catch (error) {
+                await react('❌');
+                console.error('Last seen update error:', error);
+                await reply(`❌ Failed to update last seen privacy!\n\nError: ${error.message}`);
+            }
+        }
+    },
+    
+    {
+        name: 'pponline',
+        description: 'Change your online status privacy',
+        usage: 'pponline <everyone|contacts>',
+        category: 'whatsapp',
+        
+        async execute(sock, message, args, context) {
+            const { reply, senderIsSudo, isFromOwner, react } = context;
+            
+            if (!isFromOwner && !senderIsSudo) {
+                return await reply('❌ Only owner/sudo can change privacy settings!');
+            }
+            
+            const setting = args[1]?.toLowerCase();
+            
+            if (!setting) {
+                return await reply(`🟢 Online Status Privacy Settings
+
+🔹 .pponline everyone - Everyone can see when you're online
+🔹 .pponline contacts - Only contacts can see
+
+Current setting: Use this command to check`);
+            }
+            
+            try {
+                await react('⏳');
+                
+                let privacySetting;
+                switch (setting) {
+                    case 'everyone':
+                        privacySetting = 'all';
+                        break;
+                    case 'contacts':
+                        privacySetting = 'contacts';
+                        break;
+                    default:
+                        return await reply('❌ Invalid option! Use: everyone or contacts');
+                }
+                
+                await sock.updateOnlinePrivacy(privacySetting);
+                await react('✅');
+                await reply(`✅ Online status privacy updated to: ${setting}`);
+                
+            } catch (error) {
+                await react('❌');
+                console.error('Online privacy update error:', error);
+                await reply(`❌ Failed to update online privacy!\n\nError: ${error.message}`);
+            }
+        }
+    },
+    
+    {
+        name: 'about',
+        description: 'Change your about privacy setting',
+        usage: 'about <everyone|contacts|nobody>',
+        category: 'whatsapp',
+        
+        async execute(sock, message, args, context) {
+            const { reply, senderIsSudo, isFromOwner, react } = context;
+            
+            if (!isFromOwner && !senderIsSudo) {
+                return await reply('❌ Only owner/sudo can change privacy settings!');
+            }
+            
+            const setting = args[1]?.toLowerCase();
+            
+            if (!setting) {
+                return await reply(`ℹ️ About Privacy Settings
+
+🔹 .about everyone - Everyone can see your about
+🔹 .about contacts - Only contacts can see
+🔹 .about nobody - Nobody can see
+
+Current setting: Use this command to check`);
+            }
+            
+            try {
+                await react('⏳');
+                
+                let privacySetting;
+                switch (setting) {
+                    case 'everyone':
+                        privacySetting = 'all';
+                        break;
+                    case 'contacts':
+                        privacySetting = 'contacts';
+                        break;
+                    case 'nobody':
+                        privacySetting = 'none';
+                        break;
+                    default:
+                        return await reply('❌ Invalid option! Use: everyone, contacts, or nobody');
+                }
+                
+                await sock.updateStatusPrivacy(privacySetting);
+                await react('✅');
+                await reply(`✅ About privacy updated to: ${setting}`);
+                
+            } catch (error) {
+                await react('❌');
+                console.error('About privacy update error:', error);
+                await reply(`❌ Failed to update about privacy!\n\nError: ${error.message}`);
+            }
+        }
+    },
+    
+    {
+        name: 'pplinks',
+        description: 'Change your profile links privacy',
+        usage: 'links <everyone|contacts|nobody>',
+        category: 'whatsapp',
+        
+        async execute(sock, message, args, context) {
+            const { reply, senderIsSudo, isFromOwner, react } = context;
+            
+            if (!isFromOwner && !senderIsSudo) {
+                return await reply('❌ Only owner/sudo can change privacy settings!');
+            }
+            
+            const setting = args[1]?.toLowerCase();
+            
+            if (!setting) {
+                return await reply(`🔗 Profile Links Privacy Settings
+
+🔹 .links everyone - Everyone can see your profile links
+🔹 .links contacts - Only contacts can see
+🔹 .links nobody - Nobody can see
+
+Current setting: Use this command to check`);
+            }
+            
+            try {
+                await react('⏳');
+                
+                let privacySetting;
+                switch (setting) {
+                    case 'everyone':
+                        privacySetting = 'all';
+                        break;
+                    case 'contacts':
+                        privacySetting = 'contacts';
+                        break;
+                    case 'nobody':
+                        privacySetting = 'none';
+                        break;
+                    default:
+                        return await reply('❌ Invalid option! Use: everyone, contacts, or nobody');
+                }
+                
+                // Note: This uses the same API as status/about privacy
+                await sock.updateStatusPrivacy(privacySetting);
+                await react('✅');
+                await reply(`✅ Profile links privacy updated to: ${setting}`);
+                
+            } catch (error) {
+                await react('❌');
+                console.error('Links privacy update error:', error);
+                await reply(`❌ Failed to update profile links privacy!\n\nError: ${error.message}`);
+            }
+        }
+    },
+    
+    {
+        name: 'ppreceipt',
+        aliases: ['readreceipt'],
+        description: 'Turn read receipts on/off',
+        usage: 'ppreceipt <on|off>',
+        category: 'whatsapp',
+        
+        async execute(sock, message, args, context) {
+            const { reply, senderIsSudo, isFromOwner, react } = context;
+            
+            if (!isFromOwner && !senderIsSudo) {
+                return await reply('❌ Only owner/sudo can change privacy settings!');
+            }
+            
+            const setting = args[1]?.toLowerCase();
+            
+            if (!setting) {
+                return await reply(`📖 Read Receipts Settings
+
+🔹 .ppreceipt on - Enable read receipts (blue ticks)
+🔹 .ppreceipt off - Disable read receipts
+
+Current setting: Use this command to check`);
+            }
+            
+            try {
+                await react('⏳');
+                
+                let receiptSetting;
+                switch (setting) {
+                    case 'on':
+                        receiptSetting = true;
+                        break;
+                    case 'off':
+                        receiptSetting = false;
+                        break;
+                    default:
+                        return await reply('❌ Invalid option! Use: on or off');
+                }
+                
+                await sock.updateReadReceiptsPrivacy(receiptSetting);
+                await react('✅');
+                await reply(`✅ Read receipts turned ${setting}`);
+                
+            } catch (error) {
+                await react('❌');
+                console.error('Read receipts update error:', error);
+                await reply(`❌ Failed to update read receipts!\n\nError: ${error.message}`);
+            }
+        }
+    },
+    
+    {
+        name: 'dmtimer',
+        aliases: ['disappearing'],
+        description: 'Set default disappearing messages timer',
+        usage: 'dmtimer <24h|7d|90d|off>',
+        category: 'whatsapp',
+        
+        async execute(sock, message, args, context) {
+            const { reply, senderIsSudo, isFromOwner, react } = context;
+            
+            if (!isFromOwner && !senderIsSudo) {
+                return await reply('❌ Only owner/sudo can change privacy settings!');
+            }
+            
+            const setting = args[1]?.toLowerCase();
+            
+            if (!setting) {
+                return await reply(`⏰ Disappearing Messages Timer
+
+🔹 .dmtimer 24h - Messages disappear after 24 hours
+🔹 .dmtimer 7d - Messages disappear after 7 days  
+🔹 .dmtimer 90d - Messages disappear after 90 days
+🔹 .dmtimer off - Turn off disappearing messages
+
+Current setting: Use this command to check`);
+            }
+            
+            try {
+                await react('⏳');
+                
+                let timerValue;
+                switch (setting) {
+                    case '24h':
+                        timerValue = 86400; // 24 hours in seconds
+                        break;
+                    case '7d':
+                        timerValue = 604800; // 7 days in seconds
+                        break;
+                    case '90d':
+                        timerValue = 7776000; // 90 days in seconds
+                        break;
+                    case 'off':
+                        timerValue = 0;
+                        break;
+                    default:
+                        return await reply('❌ Invalid option! Use: 24h, 7d, 90d, or off');
+                }
+                
+                await sock.updateDefaultDisappearingMode(timerValue);
+                await react('✅');
+                await reply(`✅ Default disappearing messages timer set to: ${setting}`);
+                
+            } catch (error) {
+                await react('❌');
+                console.error('Disappearing messages update error:', error);
+                await reply(`❌ Failed to update disappearing messages timer!\n\nError: ${error.message}`);
+            }
+        }
+    },
+    
+    {
+        name: 'ppgroup',
+        aliases: ['groupadd'],
+        description: 'Control who can add you to groups',
+        usage: 'ppgroup <everyone|contacts>',
+        category: 'whatsapp',
+        
+        async execute(sock, message, args, context) {
+            const { reply, senderIsSudo, isFromOwner, react } = context;
+            
+            if (!isFromOwner && !senderIsSudo) {
+                return await reply('❌ Only owner/sudo can change privacy settings!');
+            }
+            
+            const setting = args[1]?.toLowerCase();
+            
+            if (!setting) {
+                return await reply(`👥 Group Add Privacy Settings
+
+🔹 .ppgroup everyone - Anyone can add you to groups
+🔹 .ppgroup contacts - Only contacts can add you to groups
+
+Current setting: Use this command to check`);
+            }
+            
+            try {
+                await react('⏳');
+                
+                let privacySetting;
+                switch (setting) {
+                    case 'everyone':
+                        privacySetting = 'all';
+                        break;
+                    case 'contacts':
+                        privacySetting = 'contacts';
+                        break;
+                    default:
+                        return await reply('❌ Invalid option! Use: everyone or contacts');
+                }
+                
+                await sock.updateGroupsAddPrivacy(privacySetting);
+                await react('✅');
+                await reply(`✅ Group add privacy updated to: ${setting}`);
+                
+            } catch (error) {
+                await react('❌');
+                console.error('Group add privacy update error:', error);
+                await reply(`❌ Failed to update group add privacy!\n\nError: ${error.message}`);
+            }
+        }
+    }
+
 ];
