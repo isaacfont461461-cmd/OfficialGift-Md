@@ -190,7 +190,7 @@ const contextSenderIsSudo = tempContext.senderIsSudo;
             }
         }
 
-        // Non-command messages
+                // Non-command messages
         if (!userMessage.startsWith(currentPrefix)) {
     await handleAutoReaction(sock, message);
     await handleAutotypingForMessage(sock, chatId);
@@ -200,6 +200,15 @@ const contextSenderIsSudo = tempContext.senderIsSudo;
         const adminStatus = await isAdmin(sock, chatId, senderId, message);
         const context = buildContext(sock, message, { isAdminCheck: true, adminStatus });
         await handleMessageCases(sock, message, context, false);
+        const antilinkCommand = require('./commands/antilink');
+        if (antilinkCommand.checkMessage) {
+
+            await antilinkCommand.checkMessage(sock, message, context);
+    }
+        const antibadwordCommand = require('./commands/antibadword');
+        if (antibadwordCommand.checkMessage) {
+            await antibadwordCommand.checkMessage(sock, message, context);
+        }
     }
     return;
 }
