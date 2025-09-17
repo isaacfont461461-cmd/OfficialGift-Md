@@ -1,3 +1,4 @@
+
 // ======================
 // 🔹 HELPER FUNCTIONS 🔹
 // ======================
@@ -104,307 +105,164 @@ const axios = require('axios');
 const { channelInfo } = require('../lib/messageConfig');
 const sharp = require('sharp');
 const path = require('path');
-global.offlineInterval = null;
 const { autobioSettings, autoreadSettings, autorecordSettings, autorecordtypeSettings } = require('../lib/case');
 const { writeFile } = require('fs/promises');
 
-module.exports = [ 
+module.exports = [   
 {
-
-    name: 'alwaysoffline',
-
-    aliases: ['invisible'],
-
-    category: 'owner', 
-
-    description: 'Control always offline status',
-
-    usage: 'offline on/off',
-
-    
-
-    async execute(sock, message, args, context) {
-
-        const { reply, senderIsSudo, isFromOwner } = context;
-
-        
-
-        // Only owner/sudo can use this
-
-        if (!isFromOwner && !senderIsSudo) {
-
-            return reply('❌ This command is only available for the owner or sudo!');
-
-        }
-
-        
-
-        const action = args[1]?.toLowerCase();
-
-        
-
-        switch (action) {
-
-            case 'on':
-
-                // Clear existing intervals
-
-                if (global.offlineInterval) {
-
-                    clearInterval(global.offlineInterval);
-
-                }
-
-                if (global.onlineInterval) {
-
-                    clearInterval(global.onlineInterval);
-
-                    global.onlineInterval = null;
-
-                }
-
-                
-
-                // Set always offline
-
-                global.offlineInterval = setInterval(async () => {
-
-                    try {
-
-                        await sock.sendPresenceUpdate('unavailable');
-
-                        
-
-                    } catch (error) {
-
-                        console.error('❌ Error updating presence:', error);
-
-                    }
-
-                }, 10000); // Update every 10 seconds
-
-                
-
-                // Initial presence update
-
-                await sock.sendPresenceUpdate('unavailable');
-
-                
-
-                // Disable read receipts to appear more offline
-
-                try {
-
-                    await sock.readMessages([message.key]);
-
-                } catch (error) {
-
-                    // Ignore errors
-
-                }
-
-                
-
-                // Save setting to database
-
-                db.updateSetting('alwaysOffline', true);
-
-                db.updateSetting('alwaysOnline', false); // Disable online mode
-
-                
-
-                return reply('✅ Always offline mode enabled! Bot will appear offline even when active.');
-
-                
-
-            case 'off':
-
-                // Clear interval
-
-                if (global.offlineInterval) {
-
-                    clearInterval(global.offlineInterval);
-
-                    global.offlineInterval = null;
-
-                }
-
-                
-
-                // Set normal presence
-
-                await sock.sendPresenceUpdate('available');
-
-                
-
-                // Save setting to database
-
-                db.updateSetting('alwaysOffline', false);
-
-                
-
-                return reply('❌ Always offline mode disabled! Bot will show normal presence.');
-
-                
-
-            case 'status':
-
-                const isEnabled = db.getSetting('alwaysOffline', false);
-
-                const status = isEnabled ? '✅ Enabled' : '❌ Disabled';
-
-                return reply(`📊 Always Offline Status\n\n🔸 Status: ${status}\n🔸 Interval: ${global.offlineInterval ? 'Running' : 'Stopped'}`);
-
-                
-
-            default:
-
-                return reply(`
-❌ Invalid offline command!\n📝 Usage:\n• offline on - Enable always offline mode\n• offline off - Disable always offline mode\n• offline status - Check current status\n\nℹ️ Info: When enabled, bot will appear offline continuously and won't show read receipts or online status.\n\n⚠️ Note: This affects your bot account's visibility to other users.`);
-
-        }
-
-    }
-
-},
-    // commands/online.js
-
- {
-
-    name: 'alwaysonline',
-
-    aliases: ['ao'],
-
+    name: 'online',
+    description: 'Keep bot always online or return to normal presence',
+    usage: 'online [on/off/status]',
     category: 'owner',
-
-    description: 'Control always online status',
-
-    usage: 'online on/off',
-
+    ownerOnly: true,
     
-
     async execute(sock, message, args, context) {
-
         const { reply, senderIsSudo, isFromOwner } = context;
-
         
-
-        // Only owner/sudo can use this
-
         if (!isFromOwner && !senderIsSudo) {
-
-            return reply('❌ This command is only available for the owner or sudo!');
-
+            return await reply('❌ This command is only available for the owner!');
         }
 
-        
+        const subCommand = args[1]?.toLowerCase();
 
-        const action = args[1]?.toLowerCase();
+        if (!subCommand) {
+            return await reply(`🌐 Online Status Commands
 
-        
+🔹 \`.online on\` - Keep bot always online
+🔹 \`.online off\` - Return to normal presence  
+🔹 \`.online status\` - Check current setting
 
-        switch (action) {
+Current Status: ${getSetting('alwaysOnline', false) ? '🟢 Always Online' : '🔴 Normal Mode'}`);
+        }
 
+        switch (subCommand) {
             case 'on':
-
-                // Clear existing interval if any
-
-                if (global.onlineInterval) {
-
-                    clearInterval(global.onlineInterval);
-
-                }
-
+                // Enable always online
+                updateSetting('alwaysOnline', true);
+                updateSetting('alwaysOffline', false);
                 
-
-                // Set always online
-
+                // Clear any existing intervals
+                if (global.onlineInterval) clearInterval(global.onlineInterval);
+                if (global.offlineInterval) clearInterval(global.offlineInterval);
+                
+                // Set initial presence
+                sock.sendPresenceUpdate('available').catch(console.error);
+                
+                // Start interval
                 global.onlineInterval = setInterval(async () => {
-
                     try {
-
                         await sock.sendPresenceUpdate('available');
-
                         
-
                     } catch (error) {
-
-                        console.error('❌ Error updating presence:', error);
-
+                        console.error('❌ Error updating online presence:', error);
                     }
-
-                }, 30000); // Update every 30 seconds
-
+                }, 30000);
                 
-
-                // Initial presence update
-
-                await sock.sendPresenceUpdate('available');
-
-                
-
-                // Save setting to database
-
-                db.updateSetting('alwaysOnline', true);
-
-                
-
-                return reply('✅ Always online mode enabled! Bot will appear online continuously.');
-
-                
+                await reply('✅ Always Online Mode Activated!\n\n🌐 Bot will now appear online even when offline\n⚡ Status updates every 30 seconds');
+                break;
 
             case 'off':
-
-                // Clear interval
-
+                // Disable always online
+                updateSetting('alwaysOnline', false);
+                
+                // Stop intervals
                 if (global.onlineInterval) {
-
                     clearInterval(global.onlineInterval);
-
                     global.onlineInterval = null;
-
                 }
-
                 
-
-                // Set normal presence
-
-                await sock.sendPresenceUpdate('unavailable');
-
-                
-
-                // Save setting to database
-
-                db.updateSetting('alwaysOnline', false);
-
-                
-
-                return reply('❌ Always online mode disabled! Bot will show normal presence.');
-
-                
+                await reply('❌ Always Online Mode Deactivated!\n\n🔄 Bot presence returned to normal\n📱 Will show actual online/offline status');
+                break;
 
             case 'status':
-
-                const isEnabled = db.getSetting('alwaysOnline', false);
-
-                const status = isEnabled ? '✅ Enabled' : '❌ Disabled';
-
-                return reply(`📊 Always Online Status\n\n🔸 Status: ${status}\n🔸 Interval: ${global.onlineInterval ? 'Running' : 'Stopped'}`);
-
+                const isAlwaysOnline = getSetting('alwaysOnline', false);
+                const isAlwaysOffline = getSetting('alwaysOffline', false);
                 
+                let statusMsg = `🌐 Online Status Information\n\n`;
+                
+                if (isAlwaysOnline) {
+                    statusMsg += `Current Mode: 🟢 Always Online\nDescription: Bot appears online 24/7\nUpdate Interval: Every 30 seconds`;
+                } else if (isAlwaysOffline) {
+                    statusMsg += `Current Mode: 🔴 Always Offline\nDescription: Bot appears offline\nUpdate Interval: Every 10 seconds`;
+                } else {
+                    statusMsg += `Current Mode: 🔄 Normal Mode\nDescription: Shows actual presence status\nBehavior: Default WhatsApp presence`;
+                }
+                
+                await reply(statusMsg);
+                break;
 
             default:
-
-                return reply(`
-❌ Invalid online command!\n📝 Usage:\n• online on - Enable always online mode\n• online off - Disable always online mode\n• online status - Check current status\n\nℹ️ Info: When enabled, bot will appear online continuously by sending presence updates every 30 seconds.
-
-`);
-
+                await reply('❌ Invalid option!\n\nUse: `.online on`, `.online off`, or `.online status`');
+        }
+    }
+},
+      {
+    name: 'offline',
+    description: 'Keep bot always offline or return to normal presence',
+    usage: 'offline [on/off]',
+    category: 'owner',
+    ownerOnly: true,
+    
+    async execute(sock, message, args, context) {
+        const { reply, senderIsSudo, isFromOwner } = context;
+        
+        if (!isFromOwner && !senderIsSudo) {
+            return await reply('❌ This command is only available for the owner!');
         }
 
-    }
+        const subCommand = args[1]?.toLowerCase();
 
-},
+        if (!subCommand) {
+            return await reply(`🔴 Offline Status Commands
+
+🔹 \`.offline on\` - Keep bot always offline
+🔹 \`.offline off\` - Return to normal presence
+
+Current Status: ${getSetting('alwaysOffline', false) ? '🔴 Always Offline' : '🔄 Normal Mode'}`);
+        }
+
+        switch (subCommand) {
+            case 'on':
+                updateSetting('alwaysOffline', true);
+                updateSetting('alwaysOnline', false);
+                
+                // Clear any existing intervals
+                if (global.onlineInterval) clearInterval(global.onlineInterval);
+                if (global.offlineInterval) clearInterval(global.offlineInterval);
+                
+                // Set initial presence
+                sock.sendPresenceUpdate('unavailable').catch(console.error);
+                
+                // Start interval
+                global.offlineInterval = setInterval(async () => {
+                    try {
+                        await sock.sendPresenceUpdate('unavailable');
+                        
+                    } catch (error) {
+                        console.error('❌ Error updating offline presence:', error);
+                    }
+                }, 10000);
+                
+                await reply('🔴 Always Offline Mode Activated!\n\n📴 Bot will now appear offline\n⚡ Status updates every 10 seconds');
+                break;
+
+            case 'off':
+                updateSetting('alwaysOffline', false);
+                
+                // Stop interval
+                if (global.offlineInterval) {
+                    clearInterval(global.offlineInterval);
+                    global.offlineInterval = null;
+                }
+                
+                await reply('✅ Always Offline Mode Deactivated!\n\n🔄 Bot presence returned to normal');
+                break;
+
+            default:
+                await reply('❌ Invalid option!\n\nUse: `.offline on` or `.offline off`');
+        }
+    }
+},  
  {
     name: 'setpp',
     aliases: ['profilepic'],
