@@ -191,28 +191,30 @@ const contextSenderIsSudo = tempContext.senderIsSudo;
         }
 
                 // Non-command messages
-        if (!userMessage.startsWith(currentPrefix)) {
+if (!userMessage.startsWith(currentPrefix)) {
     await handleAutoReaction(sock, message);
     await handleAutotypingForMessage(sock, chatId);
-    await handleAutoRecord(sock,chatId);
+    await handleAutoRecord(sock, chatId);
     await handleAutoRecordType(sock, chatId);
+    
     if (isGroup || isChannel) {  // Add channel support here
         const adminStatus = await isAdmin(sock, chatId, senderId, message);
         const context = buildContext(sock, message, { isAdminCheck: true, adminStatus });
         await handleMessageCases(sock, message, context, false);
-        const antilinkCommand = require('./commands/antilink');
-        if (antilinkCommand.checkMessage) {
-
+        
+        // ✅ FIXED: Use global commands instead of direct require
+        const antilinkCommand = global.commands.get('antilink');
+        if (antilinkCommand && antilinkCommand.checkMessage) {
             await antilinkCommand.checkMessage(sock, message, context);
-    }
-        const antibadwordCommand = require('./commands/antibadword');
-        if (antibadwordCommand.checkMessage) {
+        }
+        
+        const antibadwordCommand = global.commands.get('antibadword');
+        if (antibadwordCommand && antibadwordCommand.checkMessage) {
             await antibadwordCommand.checkMessage(sock, message, context);
         }
     }
     return;
 }
-
         // Admin commands
         const adminCommands = [
             `${currentPrefix}mute`, `${currentPrefix}unmute`, `${currentPrefix}ban`,
