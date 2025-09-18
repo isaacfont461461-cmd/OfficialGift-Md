@@ -1,5 +1,7 @@
 //I'm coked 😭
+
 const fs = require('fs');
+const { getChatData, updateChatData, getCommandData, updateCommandData, resetDatabase } = require('../lib/database');
 const db = require('../lib/database');
 const { syncMode } = require('./topmembers');
 const fsp = fs.promises;
@@ -202,109 +204,7 @@ module.exports = [
 
     }
 
-  },
-
-  {
-
-    name: 'deljunk',
-
-    aliases: ['deletejunk', 'clearjunk'],
-
-    category: 'owner',
-
-    execute: async (sock, message, args, context) => {
-
-      if (!message.key.fromMe && !context.senderIsSudo) {
-
-        return context.reply("❌ This command is only for the owner!");
-
-      }
-
-      const tmpDir = path.resolve("./tmp");
-
-      
-
-      // Create tmp directory if it doesn't exist
-
-      if (!fs.existsSync(tmpDir)) {
-
-        fs.mkdirSync(tmpDir, { recursive: true });
-
-        return context.reply("✅ Tmp directory created. No junk files to clean.");
-
-      }
-
-      fsp.readdir(tmpDir, async function (err, files) {
-
-        if (err) {
-
-          console.log("Unable to scan directory: " + err);
-
-          return context.reply("Unable to scan directory: " + err);
-
-        }
-
-        
-
-        let junkFiles = files.filter(
-
-          (item) =>
-
-            item.endsWith("gif") ||
-
-            item.endsWith("png") || 
-
-            item.endsWith("mp3") ||
-
-            item.endsWith("mp4") || 
-
-            item.endsWith("opus") || 
-
-            item.endsWith("jpg") ||
-
-            item.endsWith("webp") ||
-
-            item.endsWith("webm") ||
-
-            item.endsWith("zip")
-
-        );
-
-        
-
-        if (junkFiles.length === 0) {
-
-          return context.reply("✅ No junk files found in tmp folder.");
-
-        }
-
-        
-
-        console.log(junkFiles.length);
-
-        await sleep(2000);
-
-        context.reply(`Clearing ${junkFiles.length} junk files in the tmp folder...`);
-
-        
-
-        await junkFiles.forEach(function (file) {
-
-          fs.unlinkSync(`${tmpDir}/${file}`);
-
-        });
-
-        
-
-        await sleep(2000);
-
-        context.reply("✅ Successfully cleared all the junk files in the tmp folder");
-
-      });
-
-    }
-
-  },
+          },
 
   {
 
@@ -1090,5 +990,304 @@ Note: Failed messages are usually due to users blocking the bot or privacy setti
             await reply('An error occurred while broadcasting the message.');
         }
     }
-}
+},
+  {
+        name: 'clearsession',
+        description: 'Clear WhatsApp session and restart bot',
+        usage: 'clearsession',
+        category: 'system',
+        ownerOnly: true,
+
+        async execute(sock, message, args, context) {
+            const { reply, isFromOwner, senderIsSudo, react } = context;
+
+            if (!isFromOwner && !senderIsSudo) {
+                return await reply('❌ Only owner/sudo can clear sessions!');
+            }
+
+            try {
+                await react('⏳');
+                await reply('🔄 Clearing WhatsApp session...\n\nBot will restart automatically.');
+
+                // Clear session files
+                const sessionPaths = [
+                    './session',
+                    './auth_info_baileys',
+                    './baileys_auth_info',
+                    './session.json'
+                ];
+
+                let clearedFiles = 0;
+                sessionPaths.forEach(sessionPath => {
+                    try {
+                        if (fs.existsSync(sessionPath)) {
+                            if (fs.lstatSync(sessionPath).isDirectory()) {
+                                fs.rmSync(sessionPath, { recursive: true, force: true });
+                            } else {
+                                fs.unlinkSync(sessionPath);
+                            }
+                            clearedFiles++;
+                            console.log(`✅ Cleared: ${sessionPath}`);
+                        }
+                    } catch (error) {
+                        console.error(`❌ Failed to clear ${sessionPath}:`, error.message);
+                    }
+                });
+
+                await react('✅');
+                console.log(`🔄 Session cleared! ${clearedFiles} files/folders removed`);
+
+                // Exit process to trigger restart
+                setTimeout(() => {
+                    process.exit(0);
+                }, 2000);
+
+            } catch (error) {
+                await react('❌');
+                console.error('Clear session error:', error);
+                await reply(`❌ Failed to clear session!\n\nError: ${error.message}`);
+            }
+        }
+    },
+
+    {
+        name: 'cleartmp',
+        aliases: ['cleartemp'],
+        description: 'Clear temporary files and cache',
+        usage: 'cleartmp',
+        category: 'system',
+        ownerOnly: true,
+
+        async execute(sock, message, args, context) {
+            const { reply, isFromOwner, senderIsSudo, react } = context;
+
+            if (!isFromOwner && !senderIsSudo) {
+                return await reply('❌ Only owner/sudo can clear temp files!');
+            }
+
+            try {
+                await react('⏳');
+
+                const tempPaths = [
+                    './temp',
+                    './tmp',
+                    './cache',
+                    './downloads',
+                    './uploads',
+                    './media/temp',
+                    './src/temp'
+                ];
+
+                let clearedCount = 0;
+                let totalSize = 0;
+
+                for (const tempPath of tempPaths) {
+                    if (fs.existsSync(tempPath)) {
+                        try {
+                            // Calculate size before deletion
+                            const stats = this.getFolderSize(tempPath);
+                            totalSize += stats.size;
+
+                            // Clear directory contents but keep the folder
+                            if (fs.lstatSync(tempPath).isDirectory()) {
+                                const files = fs.readdirSync(tempPath);
+                                files.forEach(file => {
+                                    const filePath = path.join(tempPath, file);
+                                    if (fs.lstatSync(filePath).isDirectory()) {
+                                        fs.rmSync(filePath, { recursive: true, force: true });
+                                    } else {
+                                        fs.unlinkSync(filePath);
+                                    }
+                                });
+                                clearedCount += files.length;
+                            }
+                            console.log(`✅ Cleared: ${tempPath}`);
+                        } catch (error) {
+                            console.error(`❌ Error clearing ${tempPath}:`, error.message);
+                        }
+                    }
+                }
+
+                // Clear Node.js require cache (optional)
+                const cacheKeys = Object.keys(require.cache);
+                const tempCacheKeys = cacheKeys.filter(key => 
+                    key.includes('/temp/') || 
+                    key.includes('/tmp/') || 
+                    key.includes('/cache/')
+                );
+                
+                tempCacheKeys.forEach(key => {
+                    delete require.cache[key];
+                });
+
+                await react('✅');
+
+                const sizeText = totalSize > 0 ? `\n📊 Freed: ${this.formatBytes(totalSize)}` : '';
+                await reply(`✅ Temporary files cleared!
+
+🗂️ Files/Folders: ${clearedCount}${sizeText}
+🔄 Cache entries: ${tempCacheKeys.length}
+
+System cleanup completed successfully!`);
+
+            } catch (error) {
+                await react('❌');
+                console.error('Clear temp error:', error);
+                await reply(`❌ Failed to clear temporary files!\n\nError: ${error.message}`);
+            }
+        }
+    },
+
+    {
+        name: 'resetdatabase',
+        aliases: ['resetdb', 'dbdefault'],
+        description: 'Reset database to default settings',
+        usage: 'resetdatabase [confirm]',
+        category: 'system',
+        ownerOnly: true,
+
+        async execute(sock, message, args, context) {
+            const { reply, isFromOwner, senderIsSudo, react } = context;
+
+            if (!isFromOwner && !senderIsSudo) {
+                return await reply('❌ Only owner/sudo can reset database!');
+            }
+
+            const confirm = args[1]?.toLowerCase();
+
+            if (confirm !== 'confirm') {
+                return await reply(`⚠️ DATABASE RESET WARNING
+
+🚨 This will permanently delete ALL:
+• Chat settings and configurations
+• Command data and preferences  
+• User warnings and statistics
+• Group settings and admin data
+• Plugin data and custom configs
+
+This action CANNOT be undone!
+
+To proceed, use: .resetdatabase confirm
+
+⚡ Think twice before continuing!`);
+            }
+
+            try {
+                await react('⏳');
+                await reply('🔄 Resetting database to default...');
+
+                // Get database file paths
+                const dbPaths = [
+                    './data/database.json',
+                    './database.json',
+                    './lib/database.json',
+                    './data/chats.json',
+                    './data/commands.json',
+                    './data/settings.json'
+                ];
+
+                let resetCount = 0;
+
+                // Method 1: Use resetDatabase function if available
+                if (typeof resetDatabase === 'function') {
+                    await resetDatabase();
+                    resetCount++;
+                    console.log('✅ Database reset using resetDatabase()');
+                } else {
+                    // Method 2: Manual file deletion
+                    dbPaths.forEach(dbPath => {
+                        if (fs.existsSync(dbPath)) {
+                            try {
+                                fs.unlinkSync(dbPath);
+                                resetCount++;
+                                console.log(`✅ Deleted: ${dbPath}`);
+                            } catch (error) {
+                                console.error(`❌ Failed to delete ${dbPath}:`, error.message);
+                            }
+                        }
+                    });
+                }
+
+                // Clear data directories
+                const dataDirs = [
+                    './data/plugins',
+                    './data/chats',
+                    './data/commands'
+                ];
+
+                dataDirs.forEach(dir => {
+                    if (fs.existsSync(dir)) {
+                        try {
+                            const files = fs.readdirSync(dir);
+                            files.forEach(file => {
+                                const filePath = path.join(dir, file);
+                                fs.unlinkSync(filePath);
+                            });
+                            console.log(`✅ Cleared data directory: ${dir}`);
+                        } catch (error) {
+                            console.error(`❌ Error clearing ${dir}:`, error.message);
+                        }
+                    }
+                });
+
+                await react('✅');
+                await reply(`✅ Database reset completed!
+
+🔄 Files reset: ${resetCount}
+🗂️ Data directories cleared
+⚡ All settings restored to default
+
+Bot will restart to apply changes...`);
+
+                // Restart bot to reinitialize with default settings
+                setTimeout(() => {
+                    process.exit(0);
+                }, 3000);
+
+            } catch (error) {
+                await react('❌');
+                console.error('Database reset error:', error);
+                await reply(`❌ Failed to reset database!\n\nError: ${error.message}\n\nPlease check console for details.`);
+            }
+        }
+    }
 ];
+
+// Helper functions for cleartmp command
+module.exports.forEach(cmd => {
+    if (cmd.name === 'cleartmp') {
+        cmd.getFolderSize = function(dirPath) {
+            let size = 0;
+            let count = 0;
+            
+            try {
+                const files = fs.readdirSync(dirPath);
+                files.forEach(file => {
+                    const filePath = path.join(dirPath, file);
+                    const stats = fs.lstatSync(filePath);
+                    if (stats.isDirectory()) {
+                        const subResult = this.getFolderSize(filePath);
+                        size += subResult.size;
+                        count += subResult.count;
+                    } else {
+                        size += stats.size;
+                        count++;
+                    }
+                });
+            } catch (error) {
+                console.error(`Error reading ${dirPath}:`, error.message);
+            }
+            
+            return { size, count };
+        };
+
+        cmd.formatBytes = function(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+    }
+});
+
